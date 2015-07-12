@@ -42,6 +42,14 @@ class Game(object):
 			
 			self.update(delta_time)
 			self.draw()
+
+			fps = round(1.0 / delta_time)
+			fps_text = 'FPS: {0}'.format(fps)
+			fps_w, fps_h = self.font.size(fps_text)
+			fps_text_pos = (self.width - fps_w - 40, 20)
+			
+			self.screen.blit(self.font.render(fps_text, 1, BLACK), fps_text_pos)
+
 			pygame.display.flip()
 			previous_time = current_time
 

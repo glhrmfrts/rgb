@@ -23,7 +23,7 @@ class PhysicsWorld(object):
 		self.objects.append(game_object)
 
 	def create_platforms(self):		
-		for layer in self.map.collidable_layers:
+		for layer in self.map.collidable_tile_layers:
 			tiles = list(self.map.get_nonempty_tiles_coord(layer))
 			self.create_platforms_rect(tiles, layer)
 
@@ -70,69 +70,67 @@ class PhysicsWorld(object):
 	def update(self, dt):
 		bounds = self.bounds
 		view_rect = self.map.view_rect
-		for layer in self.map.content['layers']:
-			for i, obj in enumerate(self.objects):
+		for i, obj in enumerate(self.objects):
 
-				obj.update(dt)
+			obj.update(dt)
 
-				# correct viewport offsets
-				obj.rect.left -= view_rect.left
-				obj.foot.left = obj.get_foot_left()
-				
-				# TODO: correct y-axis viewport also
+			# correct viewport offsets
+			obj.rect.left -= view_rect.left
+			obj.foot.left = obj.get_foot_left()
+			
+			# TODO: correct y-axis viewport also
 
-				foot_collisions = 0
+			foot_collisions = 0
 
-				# check left and right bounds
-				if obj.pos.x < (obj.rect.width / 2):
-					obj.vel.x = 0
-					obj.pos.x = (obj.rect.width / 2)
-				elif obj.pos.x > bounds.width:
-					obj.vel.x = 0
-					obj.pos.x = bounds.width - (obj.rect.width / 2)
+			# check left and right bounds
+			if obj.pos.x < (obj.rect.width / 2):
+				obj.vel.x = 0
+				obj.pos.x = (obj.rect.width / 2)
+			elif obj.pos.x > bounds.width:
+				obj.vel.x = 0
+				obj.pos.x = bounds.width - (obj.rect.width / 2)
 
-				# check top and bottom bounds
-				"""if obj.pos.y < obj.rect.height / 2:
-					obj.vel.y = 0
-					obj.pos.y = obj.rect.height / 2
-				elif obj.pos.y > bounds.height - (obj.rect.height / 2):
-					obj.vel.y = 0
-					obj.pos.y = bounds.height - (obj.rect.height / 2)
-					obj.on_ground = True
-					foot_collisions = 1"""
-				
-				for p in self.platforms:
+			# check top and bottom bounds
+			"""if obj.pos.y < obj.rect.height / 2:
+				obj.vel.y = 0
+				obj.pos.y = obj.rect.height / 2
+			elif obj.pos.y > bounds.height - (obj.rect.height / 2):
+				obj.vel.y = 0
+				obj.pos.y = bounds.height - (obj.rect.height / 2)
+				obj.on_ground = True
+				foot_collisions = 1"""
+			
+			for p in self.platforms:
 
-					p_rect = copy.copy(p.rect)
-					p_rect.left -= view_rect.left
+				p_rect = copy.copy(p.rect)
+				p_rect.left -= view_rect.left
 
-					if not obj.foot is None:
-						if self.is_colliding(obj.foot, p_rect):
-							foot_collisions += 1
+				if not obj.foot is None:
+					if self.is_colliding(obj.foot, p_rect):
+						foot_collisions += 1
 
-					if self.is_colliding(obj.rect, p_rect):
+				if self.is_colliding(obj.rect, p_rect):
 
-						# print obj.vel
+					# print obj.vel
 
-						if obj.on_collide_platform(p):
+					if obj.on_collide_platform(p):
 
-							obj.correct_penetration(p_rect)
+						obj.correct_penetration(p_rect)
 
-							if obj.rect.bottom < p_rect.top:
-								obj.vel.y = 0
-								obj.on_ground = True
-							elif obj.rect.top > p_rect.bottom:
-								obj.vel.y = 0
+						if obj.rect.bottom < p_rect.top:
+							obj.vel.y = 0
+							obj.on_ground = True
+						elif obj.rect.top > p_rect.bottom:
+							obj.vel.y = 0
 
-							if obj.rect.right < p_rect.left or obj.rect.left > p_rect.right:
-								print 'left or right'
-								obj.vel.x = 0
+						if obj.rect.right < p_rect.left or obj.rect.left > p_rect.right:
+							obj.vel.x = 0
 
-				if not obj.foot is None and foot_collisions < 1:
-					obj.on_ground = False
+			if not obj.foot is None and foot_collisions < 1:
+				obj.on_ground = False
 
-				if not obj.on_ground and obj.type == BODY_DYNAMIC:
-					obj.vel += self.gravity * dt
+			if not obj.on_ground and obj.type == BODY_DYNAMIC:
+				obj.vel += self.gravity * dt
 
 	def debug_draw(self, screen):
 		view_rect = self.map.view_rect
@@ -147,7 +145,7 @@ class PhysicsWorld(object):
 
 class PhysicsObject(object):
 
-	MAX_PENETRATION = 10.0
+	MAX_PENETRATION = 20.0
 	FOOT_SIZE = 0.25
 	PENETRATION_CORRECTION = 1.5
 
@@ -159,7 +157,7 @@ class PhysicsObject(object):
 		self.rect = Rect(pos, size)
 		self.rect.left = self.pos.x - self.rect.width / 2
 		self.rect.top = self.pos.y - self.rect.height / 2
-		self.acceleration = 500
+		self.acceleration = 1500
 		self.on_ground = False
 		self.foot = None
 

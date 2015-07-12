@@ -14,8 +14,14 @@ class Map(object):
 		self.tileset = [image.subsurface(rect) for rect in self.get_tileset_frames(image_rect)]
 		self.rect = pygame.Rect(0, 0, self.content['width'] * self.content['tilewidth'], \
 			self.content['height'] * self.content['tileheight'])
-		self.visible_layers = map(lambda l: l['name'], self.content['layers'])
-		self.collidable_layers = copy.copy(self.visible_layers)
+
+		# divide layers into tiles and objects and free the original array
+		self.tile_layers = self.get_layers_of_type('tilelayer')
+		self.obj_layers = self.get_layers_of_type('objectgroup')
+		del self.content['layers']
+
+		self.visible_tile_layers = map(lambda l: l['name'], self.tile_layers)
+		self.collidable_tile_layers = copy.copy(self.visible_tile_layers)
 		self.view_rect = None
 
 	def get_tileset_frames(self, image_rect):
@@ -31,8 +37,14 @@ class Map(object):
 	def get_rect(self):
 		return copy.copy(self.rect)
 
-	def get_layer(self, name):
-		return filter(lambda l: (l['name'] == name), self.content['layers'])[0]
+	def get_tile_layer(self, name):
+		return filter(lambda l: (l['name'] == name), self.tile_layers)[0]
+
+	def get_obj_layer(self, name):
+		return filter(lambda l: (l['name'] == name), self.obj_layers)[0]
+
+	def get_layers_of_type(self, type_name):
+		return filter(lambda l: (l['type'] == type_name), self.content['layers'])
 
 	def coord_to_index(self, x, y, width=0):
 		width = width if width > 0 else self.content['width'] 
@@ -47,7 +59,7 @@ class Map(object):
 		)
 
 	def get_nonempty_tiles_coord(self, layer_name):
-		layer = self.get_layer(layer_name)
+		layer = self.get_tile_layer(layer_name)
 		for y in range(layer['height']):
 			for x in range(layer['width']):
 				if layer['data'][self.coord_to_index(x, y, layer['width'])] != 0:
@@ -57,9 +69,8 @@ class Map(object):
 		self.view_rect = view_rect
 
 	def draw(self, screen):
-		view_rect = self.view_rect
-		for layer in self.content['layers']:
-			if not layer['name'] in self.visible_layers:
+		for layer in self.tile_layers:
+			if not layer['name'] in self.visible_tile_layers:
 				continue
 			for y in range(layer['height']):
 				for x in range(layer['width']):
@@ -69,4 +80,4 @@ class Map(object):
 					if tile_to_use <= 0:
 						continue
 					image = self.tileset[tile_to_use - 1]
-					screen.blit(image, (tile_x - view_rect.left, tile_y - view_rect.top))
+					screen.blit(image, (tile_x - self.view_rect.left, tile_y - self.view_rect.top))

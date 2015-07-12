@@ -3,6 +3,7 @@ from color import *
 from player import Player
 from physics import PhysicsWorld
 from camera import Camera
+from background import Background
 from map import Map
 
 ##
@@ -32,9 +33,11 @@ class PlayableScene(GameScene):
 		self.map = Map('../assets/maps/test.json', '../assets/img/ground.png')
 
 		screen_rect = game.screen.get_rect()
-		world_bounds = Rect(0, 0, self.map.get_rect().width, screen_rect.height)
+		world_bounds = Rect(0, 0, self.map.get_rect().width, game.height)
 
-		self.world = PhysicsWorld(self.map, world_bounds, (0, 90))
+		self.background = Background((game.width, game.height), world_bounds.width, '../assets/img/bg.png')
+
+		self.world = PhysicsWorld(self.map, world_bounds, (0, 900))
 		self.player = Player((50, 50), game.input)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
@@ -44,6 +47,7 @@ class PlayableScene(GameScene):
 
 	def update(self, dt):
 		game = self.game
+
 		self.camera.update()
 		self.world.update(dt)
 
@@ -52,8 +56,9 @@ class PlayableScene(GameScene):
 
 	def draw(self):
 		game = self.game
-		self.player.draw(game.screen)
+		self.background.draw(game.screen, self.camera.rect)
 		self.map.draw(game.screen)
+		self.player.draw(game.screen)
 		# self.world.debug_draw(game.screen)
 
 """
