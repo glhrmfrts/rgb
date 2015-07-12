@@ -1,5 +1,6 @@
 from sprite import *
 from pygame import Rect
+from pygame import Surface
 import pygame.image
 import pygame.transform
 import copy
@@ -28,33 +29,32 @@ class Cloud(object):
 
 class Background(object):
 
-	# TODO: discover why this slows down the framerate
-
 	MIN_CLOUD_DISTANCE = 100
 	MAX_CLOUD_DISTANCE = 500
 
 	def __init__(self, (dimensions), total_width, filename=''):
 		self.width, self.height = dimensions
-		self.image = None
+		self.bg = pygame.Surface(dimensions)
 		self.clouds = []
 		self.set_image(filename)
 		self.add_clouds(total_width)
 
 	def set_image(self, filename):
-		self.image = pygame.image.load(filename)
-		self.image = pygame.transform.scale(self.image, (self.width, self.height))
+		image = pygame.image.load(filename)
+		image = pygame.transform.scale(image, (self.width, self.height))
+		self.bg.blit(image, (0, 0))
 
 	def add_clouds(self, total_width):
 		i = 0
 		while i < total_width:
 			rect = Rect(i, 200, 320, 320)
-			parallax = random.random()
 			scale = random.random()
+			parallax = scale
 			self.clouds.append(Cloud('../assets/img/clouds.png', rect, parallax, scale))
 			i += rect.width + random.randint(self.MIN_CLOUD_DISTANCE, self.MAX_CLOUD_DISTANCE)
 
 	def draw(self, screen, view_rect):
-		screen.blit(self.image, (0, 0))
+		screen.blit(self.bg, (0, 0))
 		for c in self.clouds:
 			c.draw(screen, view_rect)
 		
