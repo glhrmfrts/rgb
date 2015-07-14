@@ -31,7 +31,7 @@ class Player(PhysicsObject):
 
 		if self.input.is_down(K_UP) and self.on_ground:
 			print 'jump'
-			self.vel.y = -450
+			self.vel.y = -425
 			
 		if self.input.is_down(K_1):
 			self.active_color = 'red'

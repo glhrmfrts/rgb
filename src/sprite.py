@@ -1,4 +1,5 @@
 import pygame
+import resource
 from color import *
 
 ##
@@ -11,7 +12,7 @@ class Sprite(object):
 		self.width, self.height = dimensions
 		self.delay = delay
 		self.timer = 0.0	
-		self.image = pygame.image.load(texture)
+		self.image = resource.load_image(texture)
 		self.rect = self.image.get_rect()
 
 		nframes_x = self.rect.width / self.width

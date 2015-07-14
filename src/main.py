@@ -1,6 +1,6 @@
 import pygame
 from color import *
-from scenes import *
+from play_scene import PlayScene
 from input import Input
 import time
 
@@ -22,7 +22,7 @@ class Game(object):
 
 	def run(self):
 		self.running = True
-		self.current_scene = PlayableScene(self)
+		self.current_scene = PlayScene(self)
 		current_time = 0
 		previous_time = time.time()
 		while self.running:
@@ -50,7 +50,7 @@ class Game(object):
 			
 			self.screen.blit(self.font.render(fps_text, 1, BLACK), fps_text_pos)
 
-			pygame.display.flip()
+			pygame.display.update()
 			previous_time = current_time
 
 		if self.restarting:

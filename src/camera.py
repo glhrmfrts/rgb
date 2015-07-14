@@ -15,9 +15,22 @@ class Camera(object):
 	def update(self):
 		if not self.target is None:
 			self.rect.left = 0
+			self.rect.top = 0
 			half_width = self.rect.width / 2
+			half_height = self.rect.height / 2
+
+			# x-axis
 			if self.target.pos.x > self.map_rect.width - half_width:
 				self.rect.left = self.map_rect.width - self.rect.width
+
 			elif self.target.pos.x > half_width:
 				self.rect.left = self.target.pos.x - half_width
+
+			# y-axis
+			if self.target.pos.y > self.map_rect.height - half_height:
+				self.rect.top = self.map_rect.height - self.rect.height
+
+			elif self.target.pos.y > half_height:
+				self.rect.top = self.target.pos.y - half_height
+
 			self.world.set_view(self.rect)

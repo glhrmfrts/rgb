@@ -24,6 +24,9 @@ class Map(object):
 		self.collidable_tile_layers = copy.copy(self.visible_tile_layers)
 		self.view_rect = None
 
+		self.tiles_position = []
+		self.compute_tile_screen_positions()
+
 	def get_tileset_frames(self, image_rect):
 		""" get each individual frame of the tileset """
 		nframes_x = image_rect.width / self.content['tilewidth']
@@ -68,7 +71,7 @@ class Map(object):
 	def set_view(self, view_rect):
 		self.view_rect = view_rect
 
-	def draw(self, screen):
+	def compute_tile_screen_positions(self):
 		for layer in self.tile_layers:
 			if not layer['name'] in self.visible_tile_layers:
 				continue
@@ -77,7 +80,25 @@ class Map(object):
 					tile_x = x * self.content['tilewidth']
 					tile_y = y * self.content['tileheight']
 					tile_to_use = layer['data'][self.coord_to_index(x, y, layer['width'])]
+
 					if tile_to_use <= 0:
 						continue
-					image = self.tileset[tile_to_use - 1]
-					screen.blit(image, (tile_x - self.view_rect.left, tile_y - self.view_rect.top))
+
+					self.tiles_position.append((tile_x, tile_y, tile_to_use - 1))
+
+	def draw(self, screen):
+		image = pygame.Surface((self.view_rect.width, self.view_rect.height))
+		image.set_colorkey((0, 0, 0))
+
+		for position in self.tiles_position:
+			tile_x, tile_y, tile_to_use = position
+			tile_image = self.tileset[tile_to_use]
+			tile_dimension = tile_image.get_rect()
+
+			if tile_x + tile_dimension.width < self.view_rect.left or \
+				tile_x > self.view_rect.right:
+				continue
+
+			image.blit(tile_image.convert(), (tile_x - self.view_rect.left, tile_y - self.view_rect.top))
+
+		screen.blit(image, (0, 0))

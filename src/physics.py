@@ -74,11 +74,14 @@ class PhysicsWorld(object):
 
 			obj.update(dt)
 
-			# correct viewport offsets
-			obj.rect.left -= view_rect.left
-			obj.foot.left = obj.get_foot_left()
+			# adjust viewport offsets
+			if obj.type == BODY_DYNAMIC:
+				obj.rect.left -= view_rect.left
+
+				if not obj.foot is None:
+					obj.foot.left = obj.get_foot_left()
 			
-			# TODO: correct y-axis viewport also
+				# TODO: adjust y-axis viewport also
 
 			foot_collisions = 0
 
@@ -146,7 +149,7 @@ class PhysicsWorld(object):
 class PhysicsObject(object):
 
 	MAX_PENETRATION = 20.0
-	FOOT_SIZE = 0.25
+	FOOT_SIZE = 0.5
 	PENETRATION_CORRECTION = 1.5
 
 	def __init__(self, pos, vel, size=(0, 0), body_type=0):
@@ -172,7 +175,7 @@ class PhysicsObject(object):
 			self.foot = None
 
 	def get_foot_left(self):
-		return (self.rect.left + self.rect.width / 2) - self.rect.width * self.FOOT_SIZE
+		return self.rect.left + (self.rect.width * self.FOOT_SIZE / 2)
 
 	def update_foot(self):
 		if not self.foot is None:
