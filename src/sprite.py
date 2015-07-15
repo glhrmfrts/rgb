@@ -68,6 +68,6 @@ class Sprite(object):
 
 		# TODO: correct this bug
 		left = dst_rect.left - dst_rect.width / 2
-
+		
 		top = dst_rect.top
 		screen.blit(image, (left, top))

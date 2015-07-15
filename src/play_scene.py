@@ -1,4 +1,5 @@
 from pygame.locals import *
+from pygame import Surface
 from color import *
 from physics import *
 from scene import Scene
@@ -30,7 +31,7 @@ class ColorChangingBlock(PhysicsObject):
 		self.timer += dt
 		if self.timer >= self.interval:
 			self.timer = 0
-			self.sprite.use_frames([random.randint(8, 10)])
+			self.sprite.use_frames([9])
 
 	def draw(self, screen, view_rect):
 		rect = Rect(self.rect.left, self.rect.top, self.rect.width, self.rect.height)
@@ -73,13 +74,13 @@ class PlayScene(Scene):
 			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
 			block = ColorChangingBlock(real_coord, random.randint(1, 5))
-			self.world.add_object(block)
+			self.world.add_obj(block)
 			self.color_changing_blocks.append(block)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
 
-		self.world.add_object(self.player)
+		self.world.add_obj(self.player)
 
 	def update(self, dt):
 		game = self.game
@@ -99,4 +100,4 @@ class PlayScene(Scene):
 			block.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
-		# self.world.debug_draw(game.screen)
+		self.world.debug_draw(game.screen)

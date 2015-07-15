@@ -15,18 +15,21 @@ class PhysicsWorld(object):
 		self.bounds = bounds
 		self.gravity = Vector2(gravity)
 		self.velocity_threshold = 3
-		self.objects = []
+		self.static_objects = []
+		self.dynamic_objects = []
 		self.platforms = []
 		self.create_platforms()
 
-	def add_object(self, game_object):
-		self.objects.append(game_object)
+	def add_obj(self, obj):
+		if obj.type == BODY_DYNAMIC:
+			self.dynamic_objects.append(obj)
+		elif obj.type == BODY_STATIC:
+			self.static_objects.append(obj)
 
 	def create_platforms(self):		
 		for layer in self.map.collidable_tile_layers:
 			tiles = list(self.map.get_nonempty_tiles_coord(layer))
 			self.create_platforms_rect(tiles, layer)
-
 
 	def create_platforms_rect(self, tiles, layer):
 		""" Create a collision rect for each non-empty tile segment, that is, one or more tiles together """
@@ -59,9 +62,6 @@ class PhysicsWorld(object):
 		self.create_platforms_rect([t for t in tiles if not t in excluded_tiles], layer)
 
 	def is_colliding(self, a, b):
-		types = [type(a).__name__, type(b).__name__]
-		if not types.count('Rect') == len(types):
-			raise TypeError('should be Rect')
 		return a.colliderect(b)
 
 	def set_view(self, view_rect):
@@ -70,16 +70,15 @@ class PhysicsWorld(object):
 	def update(self, dt):
 		bounds = self.bounds
 		view_rect = self.map.view_rect
-		for i, obj in enumerate(self.objects):
+		for i, obj in enumerate(self.dynamic_objects):
 
 			obj.update(dt)
 
 			# adjust viewport offsets
-			if obj.type == BODY_DYNAMIC:
-				obj.rect.left -= view_rect.left
+			obj.rect.left -= view_rect.left
 
-				if not obj.foot is None:
-					obj.foot.left = obj.get_foot_left()
+			if not obj.foot is None:
+				obj.foot.left = obj.get_foot_left()
 			
 				# TODO: adjust y-axis viewport also
 
@@ -102,11 +101,12 @@ class PhysicsWorld(object):
 				obj.pos.y = bounds.height - (obj.rect.height / 2)
 				obj.on_ground = True
 				foot_collisions = 1"""
-			
-			for p in self.platforms:
+
+			for p in (self.platforms + self.static_objects):
 
 				p_rect = copy.copy(p.rect)
 				p_rect.left -= view_rect.left
+				p_rect.top -= view_rect.top
 
 				if not obj.foot is None:
 					if self.is_colliding(obj.foot, p_rect):
@@ -114,10 +114,14 @@ class PhysicsWorld(object):
 
 				if self.is_colliding(obj.rect, p_rect):
 
-					# print obj.vel
+					should_handle_collision = False
 
-					if obj.on_collide_platform(p):
+					if isinstance(p, Platform):
+						should_handle_collision = obj.on_collide_platform(p)
+					else:
+						should_handle_collision = obj.on_collide_obj(p)
 
+					if should_handle_collision:
 						obj.correct_penetration(p_rect)
 
 						if obj.rect.bottom < p_rect.top:
@@ -135,6 +139,12 @@ class PhysicsWorld(object):
 			if not obj.on_ground and obj.type == BODY_DYNAMIC:
 				obj.vel += self.gravity * dt
 
+	def rect_adjust(self, rect):
+		result = copy.copy(rect)
+		result.left -= self.map.view_rect.left
+		result.top -= self.map.view_rect.top
+		return result
+
 	def debug_draw(self, screen):
 		view_rect = self.map.view_rect
 
@@ -142,8 +152,8 @@ class PhysicsWorld(object):
 			image = pygame.Surface((p.rect.width, p.rect.height))
 			screen.blit(image, (p.rect.left - view_rect.left, p.rect.top - view_rect.top))
 
-		for obj in self.objects:
-			obj.debug_draw(screen)
+		for obj in (self.dynamic_objects + self.static_objects):
+			obj.debug_draw(screen, view_rect)
 
 
 class PhysicsObject(object):
@@ -189,9 +199,19 @@ class PhysicsObject(object):
 		self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
 		self.update_foot()
 
-	def debug_draw(self, screen):
-		image = pygame.Surface((self.rect.width, self.rect.height))
-		screen.blit(image, (self.rect.left, self.rect.top))
+	def debug_draw(self, screen, view_rect):
+
+		draw_rect = None
+
+		if self.type == BODY_DYNAMIC:
+			draw_rect = self.rect
+		else:
+			draw_rect = copy.copy(self.rect)
+			draw_rect.left -= view_rect.left
+			draw_rect.top -= view_rect.top
+
+		image = pygame.Surface((draw_rect.width, draw_rect.height))
+		screen.blit(image, (draw_rect.left, draw_rect.top))
 
 		if not self.foot is None:
 			foot_image = pygame.Surface((self.foot.width, self.foot.height))

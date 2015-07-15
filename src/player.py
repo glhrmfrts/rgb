@@ -29,7 +29,7 @@ class Player(PhysicsObject):
 			self.sprite.set_direction(-1)
 			self.sprite.use_frames([1, 2])
 
-		if self.input.is_down(K_UP) and self.on_ground:
+		if self.input.is_down(K_UP) and True: # self.on_ground:
 			print 'jump'
 			self.vel.y = -425
 			
@@ -44,7 +44,8 @@ class Player(PhysicsObject):
 			self.active_color_sprite.use_frames([10])
 
 	def on_collide_obj(self, obj):
-		print "player obj collision"
+		print "player obj collisoin"
+		return True
 
 	def on_collide_platform(self, platform):
 		return platform.layer in [self.active_color, 'ground']
