@@ -70,11 +70,18 @@ class PhysicsWorld(object):
 	def update(self, dt):
 		bounds = self.bounds
 		view_rect = self.map.view_rect
+		previous_active_color = None
 
 		for obj in self.static_objects:
 			obj.update(dt)
 
 		for i, obj in enumerate(self.dynamic_objects):
+
+			if previous_active_color is None:
+				try:
+					previous_active_color = obj.active_color
+				except:
+					pass
 
 			obj.update(dt)
 
@@ -115,6 +122,26 @@ class PhysicsWorld(object):
 				if not obj.foot is None:
 					if self.is_colliding(obj.foot, p_rect):
 						foot_collisions += 1
+
+						changed_active_color = False
+						try:
+							changed_active_color_static = False
+							if type(p).__name__ == 'ColorChangingBlock':
+								changed_active_color_static = p.active_color != p.previous_active_color
+								print changed_active_color_static
+
+							changed_active_color = obj.active_color != previous_active_color or \
+													changed_active_color_static
+
+							previous_active_color = obj.active_color
+
+							if changed_active_color:
+								# print 'changed active color'
+								foot_collisions = 0
+								obj.on_ground = False
+						except AttributeError:
+							pass
+						
 
 				if self.is_colliding(obj.rect, p_rect):
 

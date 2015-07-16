@@ -1,6 +1,7 @@
 from pygame.locals import *
 from pygame import Surface
 from pygame import Rect
+from pygame.math import Vector2
 from color import *
 from physics import *
 from scene import Scene
@@ -28,6 +29,7 @@ class ColorChangingBlock(PhysicsObject):
 		self.pattern = [random.randint(0, 2) for i in range(self.PATTERN_SIZE)]
 
 		self.pattern_color_pointer = 0
+		self.previous_active_color = 0
 		self.active_color = self.colors[self.pattern_color_pointer]
 		self.sprite.use_frames([self.pattern_color_pointer])
 
@@ -40,9 +42,12 @@ class ColorChangingBlock(PhysicsObject):
 	def update(self, dt):
 		self.sprite.update(dt)
 		self.timer += dt
+
+		self.previous_active_color = self.active_color
 		
 		if self.timer >= self.interval:
 			self.timer = 0
+			self.previous_pointer = self.pattern_color_pointer
 			self.pattern_color_pointer += 1
 
 			if self.pattern_color_pointer >= self.PATTERN_SIZE:
@@ -58,6 +63,27 @@ class ColorChangingBlock(PhysicsObject):
 		rect.top -= view_rect.top
 
 		self.sprite.draw(screen, rect)
+
+
+class RotatingWheel(object):
+
+	def __init__(self, world, pos, speed, direction):
+		self.pos = Vector2(pos)
+		self.center_rect = Rect(self.pos.x - 16, self.pos.y - 16, 32, 32)
+		self.speed = speed
+		self.direction = direction
+
+	def update(self, dt):
+		pass
+
+	def draw(self, screen, view_rect):
+		rect = Rect(self.center_rect.left, self.center_rect.top, self.center_rect.width, self.center_rect.height)
+		rect.left -= view_rect.left
+		rect.top -= view_rect.top
+
+		debug_image = Surface((32, 32))
+		debug_image.fill((0,0,255))
+		screen.blit(debug_image, (rect.left, rect.top))
 
 
 class Player(PhysicsObject):
@@ -127,7 +153,7 @@ class PlayScene(Scene):
 		self.timer = 0.0
 		self.timer_freq = 5.0
 		self.x = 50.0
-		self.color_changing_blocks = []
+		self.drawable_objects = []
 		self.map = Map('../assets/maps/test.json', '../assets/img/ground.png')
 
 		screen_rect = game.screen.get_rect()
@@ -145,16 +171,22 @@ class PlayScene(Scene):
 
 		# create dynamic color blocks
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
-
-		print color_changing_blocks
+		rotating_wheels = self.map.get_obj_layer('rotating_wheels')['objects']
 
 		for tile_block in color_changing_blocks:
 			map_x, map_y = self.map.get_map_coord((tile_block['x'], tile_block['y']))
 			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
-			block = ColorChangingBlock(real_coord, 1)
+			block = ColorChangingBlock(real_coord, 2)
 			self.world.add_obj(block)
-			self.color_changing_blocks.append(block)
+			self.drawable_objects.append(block)
+
+		for tile_wheel in rotating_wheels:
+			map_x, map_y = self.map.get_map_coord((tile_wheel['x'], tile_wheel['y']))
+			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
+
+			wheel = RotatingWheel(self.world, real_coord, 40, -1)
+			self.drawable_objects.append(wheel)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
@@ -175,8 +207,8 @@ class PlayScene(Scene):
 		self.background.draw(game.screen, self.camera.rect)
 		self.map.draw(game.screen)
 
-		for block in self.color_changing_blocks:
-			block.draw(game.screen, self.camera.rect)
+		for obj in self.drawable_objects:
+			obj.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
 		# self.world.debug_draw(game.screen)
