@@ -70,6 +70,10 @@ class PhysicsWorld(object):
 	def update(self, dt):
 		bounds = self.bounds
 		view_rect = self.map.view_rect
+
+		for obj in self.static_objects:
+			obj.update(dt)
+
 		for i, obj in enumerate(self.dynamic_objects):
 
 			obj.update(dt)
