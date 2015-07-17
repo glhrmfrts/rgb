@@ -48,7 +48,7 @@ class Game(object):
 			fps_w, fps_h = self.font.size(fps_text)
 			fps_text_pos = (self.width - fps_w - 40, 20)
 			
-			self.screen.blit(self.font.render(fps_text, 1, BLACK), fps_text_pos)
+			self.screen.blit(self.font.render(fps_text, 1, WHITE), fps_text_pos)
 
 			pygame.display.update()
 			previous_time = current_time

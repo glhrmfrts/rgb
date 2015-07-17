@@ -29,6 +29,7 @@ class Sprite(object):
 
 		# 1 (right) or -1 (left)
 		self.direction = 1
+		self.offset = 0
 
 	def get_rect(self):
 		return self.rect
@@ -42,6 +43,9 @@ class Sprite(object):
 
 	def use_frames(self, frames):
 		self.using_frames = frames
+
+	def set_offset(self, offset):
+		self.offset = offset
 
 	def set_direction(self, direction):
 		if self.direction != direction:
@@ -64,7 +68,7 @@ class Sprite(object):
 			self.current_frame = self.get_next_frame()
 
 	def draw(self, screen, dst_rect):
-		image = self.frames[self.current_frame]
+		image = self.frames[self.offset + self.current_frame]
 
 		# TODO: correct this bug
 		left = dst_rect.left - dst_rect.width / 2

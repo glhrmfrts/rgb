@@ -14,6 +14,6 @@ class Color(object):
 
 WHITE = Color(255, 255, 255).tuple()
 BLACK = Color(0, 0, 0).tuple()
-RED = Color(255, 0, 0).tuple()
-GREEN = Color(0, 255, 0).tuple()
-BLUE = Color(0, 0, 255).tuple()
+RED = Color(217, 12, 12).tuple()
+GREEN = Color(53, 217, 12).tuple()
+BLUE = Color(12, 107, 217).tuple()

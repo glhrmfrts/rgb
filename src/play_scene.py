@@ -8,6 +8,7 @@ from scene import Scene
 from camera import Camera
 from background import Background
 from sprite import Sprite
+from text import Text
 from map import Map
 import random
 
@@ -65,25 +66,21 @@ class ColorChangingBlock(PhysicsObject):
 		self.sprite.draw(screen, rect)
 
 
-class RotatingWheel(object):
+class LavaBlock(PhysicsObject):
 
-	def __init__(self, world, pos, speed, direction):
-		self.pos = Vector2(pos)
-		self.center_rect = Rect(self.pos.x - 16, self.pos.y - 16, 32, 32)
-		self.speed = speed
-		self.direction = direction
+	def __init__(self, pos):
+		PhysicsObject.__init__(self, pos, (0, 0), (32, 64), BODY_STATIC)
+		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
+		self.sprite.use_frames([0, 1, 2])
 
 	def update(self, dt):
-		pass
+		self.sprite.update(dt)
 
 	def draw(self, screen, view_rect):
-		rect = Rect(self.center_rect.left, self.center_rect.top, self.center_rect.width, self.center_rect.height)
-		rect.left -= view_rect.left
+		rect = Rect(self.rect.left, self.rect.top, self.rect.width, self.rect.height)
+		rect.left -= view_rect.left - rect.width / 2
 		rect.top -= view_rect.top
-
-		debug_image = Surface((32, 32))
-		debug_image.fill((0,0,255))
-		screen.blit(debug_image, (rect.left, rect.top))
+		self.sprite.draw(screen, rect)
 
 
 class Player(PhysicsObject):
@@ -91,16 +88,13 @@ class Player(PhysicsObject):
 	def __init__(self, pos, input):
 		PhysicsObject.__init__(self, pos, (0, 0), (32, 64), BODY_DYNAMIC)
 		self.input = input
-		self.sprite = Sprite("../assets/img/guy.png", (32, 32), (1.0 / 12.0), 2)
+		self.sprite = Sprite("../assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
 		self.set_foot(True)
 		self.active_color = 'red'
-
-		# Provisory
-		self.active_color_sprite = Sprite("../assets/img/ground.png", (32, 32), 1.0 / 12.0)
-		self.active_color_sprite.use_frames([8])
+		self.dead = False
 
 	def handle_input(self, dt):
-		self.sprite.use_frames([0])
+		
 		self.target_vel.x = 0
 		if self.input.is_pressed(K_RIGHT):
 			self.target_vel.x = 300
@@ -117,33 +111,40 @@ class Player(PhysicsObject):
 			
 		if self.input.is_down(K_1):
 			self.active_color = 'red'
-			self.active_color_sprite.use_frames([8])
+			self.sprite.set_offset(0)
+
 		elif self.input.is_down(K_2):
 			self.active_color = 'green'
-			self.active_color_sprite.use_frames([9])
+			self.sprite.set_offset(4)
+
 		elif self.input.is_down(K_3):
 			self.active_color = 'blue'
-			self.active_color_sprite.use_frames([10])
+			self.sprite.set_offset(8)
 
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
 		if isinstance(obj, ColorChangingBlock):
-			return obj.active_color == self.active_color
+			return obj.active_color != self.active_color
+		elif isinstance(obj, LavaBlock):
+			self.dead = True
 		return True
 
 	def on_collide_platform(self, platform):
-		return platform.layer in [self.active_color, 'ground']
+		return platform.layer != self.active_color
 
 	def update(self, dt):
 		PhysicsObject.update(self, dt)
 		self.handle_input(dt)
 		self.sprite.update(dt)
-		self.active_color_sprite.update(dt)
+
+		if self.vel.y > 1.0 and not self.on_ground:
+			print 'flying'
+			self.sprite.use_frames([3])
+		else:
+			self.sprite.use_frames([0])
 
 	def draw(self, screen):
 		self.sprite.draw(screen, self.rect)
-		rect = Rect(20, 20, 32, 32)
-		self.active_color_sprite.draw(screen, rect)
 
 
 class PlayScene(Scene):
@@ -156,10 +157,12 @@ class PlayScene(Scene):
 		self.drawable_objects = []
 		self.map = Map('../assets/maps/test.json', '../assets/img/ground.png')
 
+		self.drawable_objects.append(Text(game.font, 'hello world', (200, 100)))
+
 		screen_rect = game.screen.get_rect()
 		world_bounds = Rect(0, 0, self.map.get_rect().width, game.height)
 
-		self.background = Background((game.width, game.height), world_bounds.width, '../assets/img/bg.png')
+		self.bg = Surface((game.width, game.height))
 
 		self.world = PhysicsWorld(self.map, world_bounds, (0, 900))
 
@@ -171,7 +174,7 @@ class PlayScene(Scene):
 
 		# create dynamic color blocks
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
-		rotating_wheels = self.map.get_obj_layer('rotating_wheels')['objects']
+		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
 
 		for tile_block in color_changing_blocks:
 			map_x, map_y = self.map.get_map_coord((tile_block['x'], tile_block['y']))
@@ -181,12 +184,13 @@ class PlayScene(Scene):
 			self.world.add_obj(block)
 			self.drawable_objects.append(block)
 
-		for tile_wheel in rotating_wheels:
-			map_x, map_y = self.map.get_map_coord((tile_wheel['x'], tile_wheel['y']))
+		for block in lava_blocks:
+			map_x, map_y = self.map.get_map_coord((block['x'], block['y']))
 			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
-			wheel = RotatingWheel(self.world, real_coord, 40, -1)
-			self.drawable_objects.append(wheel)
+			lava_block = LavaBlock(real_coord)
+			self.world.add_obj(lava_block)
+			self.drawable_objects.append(lava_block)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
@@ -199,12 +203,14 @@ class PlayScene(Scene):
 		self.camera.update()
 		self.world.update(dt)
 
-		if self.player.rect.top > game.screen.get_rect().height:
+		if self.player.rect.top > game.screen.get_rect().height or self.player.dead:
 			game.restart()
 
 	def draw(self):
 		game = self.game
-		self.background.draw(game.screen, self.camera.rect)
+		# self.background.draw(game.screen, self.camera.rect)
+		game.screen.blit(self.bg, (0, 0))
+
 		self.map.draw(game.screen)
 
 		for obj in self.drawable_objects:
