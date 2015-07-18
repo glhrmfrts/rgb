@@ -44,7 +44,10 @@ class Map(object):
 		return filter(lambda l: (l['name'] == name), self.tile_layers)[0]
 
 	def get_obj_layer(self, name):
-		return filter(lambda l: (l['name'] == name), self.obj_layers)[0]
+		try:
+			return filter(lambda l: (l['name'] == name), self.obj_layers)[0]
+		except IndexError:
+			return []
 
 	def get_layers_of_type(self, type_name):
 		return filter(lambda l: (l['type'] == type_name), self.content['layers'])

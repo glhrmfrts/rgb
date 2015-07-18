@@ -69,7 +69,7 @@ class ColorChangingBlock(PhysicsObject):
 class LavaBlock(PhysicsObject):
 
 	def __init__(self, pos):
-		PhysicsObject.__init__(self, pos, (0, 0), (32, 64), BODY_STATIC)
+		PhysicsObject.__init__(self, pos, (0, 0), (32, 32), BODY_STATIC)
 		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
 		self.sprite.use_frames([0, 1, 2])
 
@@ -79,8 +79,64 @@ class LavaBlock(PhysicsObject):
 	def draw(self, screen, view_rect):
 		rect = Rect(self.rect.left, self.rect.top, self.rect.width, self.rect.height)
 		rect.left -= view_rect.left - rect.width / 2
-		rect.top -= view_rect.top
+		rect.top -= view_rect.top - rect.height / 2
 		self.sprite.draw(screen, rect)
+
+
+class TrickyBlock(PhysicsObject):
+
+	def __init__(self, pos, size, tile_width):
+		left, top = pos
+		x = left + tile_width / 2
+		y = top + tile_width / 2
+		scale = size[0] / tile_width
+		PhysicsObject.__init__(self, (x + size[0]/2, y), (0, 0), size, BODY_STATIC)
+		self.img_rect = Surface(size)
+		self.shown_color_frame = random.randint(0, 3)
+		self.hidden_color_frame = self.gen_color(self.shown_color_frame)
+		self.colors = ['red', 'green', 'blue', 'gray']
+		self.colors_values = [RED, GREEN, BLUE, GRAY]
+		self.active_color = self.colors[self.shown_color_frame]
+		self.previous_active_color = 0
+		self.img_rect.fill(self.colors_values[self.shown_color_frame])
+
+	def gen_color(self, color_frame):
+		new_color = random.randint(0, 2)
+		if new_color == color_frame:
+			return self.gen_color(color_frame)
+		return new_color
+
+	def on_collide_obj(self, obj):
+		if isinstance(obj, Player):
+			self.active_color = self.colors[self.hidden_color_frame]
+			self.img_rect.fill(self.colors_values[self.hidden_color_frame])
+
+	def update(self, dt):
+		pass
+
+	def draw(self, screen, view_rect):
+		left = self.rect.left - view_rect.left
+		top = self.rect.top - view_rect.top
+
+		screen.blit(self.img_rect, (left, top))
+
+
+class ExitBlock(PhysicsObject):
+
+	def __init__(self, pos):
+		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
+		self.img = pygame.image.load('../assets/img/exit.png')
+		self.exited = False
+
+	def on_collide_obj(self, obj):
+		if isinstance(obj, Player):
+			self.exited = True
+
+	def draw(self, screen, view_rect):
+		left = self.rect.left - view_rect.left
+		top = self.rect.top - view_rect.top
+
+		screen.blit(self.img, (left, top))
 
 
 class Player(PhysicsObject):
@@ -91,6 +147,7 @@ class Player(PhysicsObject):
 		self.sprite = Sprite("../assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
 		self.set_foot(True)
 		self.active_color = 'red'
+		self.acceleration = 400
 		self.dead = False
 
 	def handle_input(self, dt):
@@ -123,7 +180,7 @@ class Player(PhysicsObject):
 
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
-		if isinstance(obj, ColorChangingBlock):
+		if isinstance(obj, ColorChangingBlock) or isinstance(obj, TrickyBlock):
 			return obj.active_color != self.active_color
 		elif isinstance(obj, LavaBlock):
 			self.dead = True
@@ -155,7 +212,7 @@ class PlayScene(Scene):
 		self.timer_freq = 5.0
 		self.x = 50.0
 		self.drawable_objects = []
-		self.map = Map('../assets/maps/test.json', '../assets/img/ground.png')
+		self.map = Map('../assets/maps/level1.json', '../assets/img/ground.png')
 
 		self.drawable_objects.append(Text(game.font, 'hello world', (200, 100)))
 
@@ -174,28 +231,49 @@ class PlayScene(Scene):
 
 		# create dynamic color blocks
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
-		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
 
-		for tile_block in color_changing_blocks:
-			map_x, map_y = self.map.get_map_coord((tile_block['x'], tile_block['y']))
-			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
+		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
+		tricky_blocks = self.map.get_obj_layer('tricky_blocks')['objects']
+		exit_block = self.map.get_obj_layer('exit')['objects'][0]
+
+		exit_coord = self.obj_adjust_position((exit_block['x'], exit_block['y']))
+
+		self.exit = ExitBlock(exit_coord)
+		self.world.add_obj(self.exit)
+		self.drawable_objects.append(self.exit)
+
+		for block in color_changing_blocks:
+			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
 
 			block = ColorChangingBlock(real_coord, 2)
 			self.world.add_obj(block)
 			self.drawable_objects.append(block)
 
 		for block in lava_blocks:
-			map_x, map_y = self.map.get_map_coord((block['x'], block['y']))
-			real_coord = (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
+			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
 
 			lava_block = LavaBlock(real_coord)
 			self.world.add_obj(lava_block)
 			self.drawable_objects.append(lava_block)
+
+		for block in tricky_blocks:
+			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
+			right, _ = self.obj_adjust_position(( block['x'] + block['width'], block['y']) )
+
+			right += self.map.content['tilewidth']
+
+			tricky_block = TrickyBlock(real_coord, (right - block['x'], self.map.content['tilewidth']), self.map.content['tilewidth'])
+			self.world.add_obj(tricky_block)
+			self.drawable_objects.append(tricky_block)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
 
 		self.world.add_obj(self.player)
+
+	def obj_adjust_position(self, pos):
+		map_x, map_y = self.map.get_map_coord((pos[0], pos[1]))
+		return (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
 	def update(self, dt):
 		game = self.game
@@ -203,7 +281,7 @@ class PlayScene(Scene):
 		self.camera.update()
 		self.world.update(dt)
 
-		if self.player.rect.top > game.screen.get_rect().height or self.player.dead:
+		if self.player.rect.top > game.screen.get_rect().height or self.player.dead or self.exit.exited:
 			game.restart()
 
 	def draw(self):

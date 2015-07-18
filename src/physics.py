@@ -36,30 +36,26 @@ class PhysicsWorld(object):
 		if len(tiles) < 1:
 			return False
 
-		x, y = tiles.pop(0)
-		n_tiles_x = n_tiles_y = 1
-		width = self.map.content['tilewidth']
-		height = self.map.content['tileheight']
-		rect = Rect((0, 0, 0, 0))
-		rect.left = x * width
-		rect.top = y * height
-		rect.width = width
-		rect.height = height
+		for x, y in tiles:
+			width = self.map.content['tilewidth']
+			height = self.map.content['tileheight']
+			rect = Rect((0, 0, 0, 0))
+			rect.left = x * width
+			rect.top = y * height
+			rect.width = width
+			rect.height = height
+			self.platforms.append(Platform(rect, layer))
 
 		# exclude the tiles we're about to create a platform for
-		excluded_tiles = []
+		"""excluded_tiles = []
 		for (n_x, n_y) in tiles:
 			if abs(n_x - x) == n_tiles_x and n_y == y:
 				rect.width += width
 				n_tiles_x += 1
 				excluded_tiles.append((n_x, n_y))
-			if abs(n_y - y) == n_tiles_y and n_x == x:
-				rect.height += height
-				n_tiles_y += 1
-				excluded_tiles.append((n_x, n_y))
 
 		self.platforms.append(Platform(rect, layer))
-		self.create_platforms_rect([t for t in tiles if not t in excluded_tiles], layer)
+		self.create_platforms_rect([t for t in tiles if not t in excluded_tiles], layer)"""
 
 	def is_colliding(self, a, b):
 		return a.colliderect(b)
@@ -126,9 +122,9 @@ class PhysicsWorld(object):
 						changed_active_color = False
 						try:
 							changed_active_color_static = False
-							if type(p).__name__ == 'ColorChangingBlock':
+							if type(p).__name__ in ['ColorChangingBlock', 'TrickyBlock']:
 								changed_active_color_static = p.active_color != p.previous_active_color
-								print changed_active_color_static
+								if changed_active_color_static: p.previous_active_color = p.active_color
 
 							changed_active_color = obj.active_color != previous_active_color or \
 													changed_active_color_static
@@ -151,6 +147,7 @@ class PhysicsWorld(object):
 						should_handle_collision = obj.on_collide_platform(p)
 					else:
 						should_handle_collision = obj.on_collide_obj(p)
+						p.on_collide_obj(obj)
 
 					if should_handle_collision:
 						obj.correct_penetration(p_rect)
@@ -181,6 +178,7 @@ class PhysicsWorld(object):
 
 		for p in self.platforms:
 			image = pygame.Surface((p.rect.width, p.rect.height))
+			image.fill((205, 0, 205))
 			screen.blit(image, (p.rect.left - view_rect.left, p.rect.top - view_rect.top))
 
 		for obj in (self.dynamic_objects + self.static_objects):
@@ -191,7 +189,7 @@ class PhysicsObject(object):
 
 	MAX_PENETRATION = 20.0
 	FOOT_SIZE = 0.5
-	PENETRATION_CORRECTION = 1.5
+	PENETRATION_CORRECTION = 1
 
 	def __init__(self, pos, vel, size=(0, 0), body_type=0):
 		self.pos = Vector2(pos)
@@ -257,10 +255,10 @@ class PhysicsObject(object):
 		return current if (direction == math.copysign(1.0, target - current)) else target
 
 	def on_collide_obj(self, obj=None):
-		raise NotImplementedError('implement on_collide_obj')
+		pass
 
 	def on_collide_platform(self, tile=None):
-		raise NotImplementedError('implement on_collide_platform')
+		pass
 
 	def correct_penetration(self, orect):
 		overlapse_right = self.vel.x > 0 and self.rect.right > orect.left and self.rect.left < orect.left
@@ -274,13 +272,16 @@ class PhysicsObject(object):
 		p_left = abs(self.rect.left - orect.right)
 
 		if overlapse_top and p_bottom < self.MAX_PENETRATION:
-			self.rect.y -= (self.rect.bottom - orect.top) * self.PENETRATION_CORRECTION
+			self.pos.y -= (self.rect.bottom - orect.top) * self.PENETRATION_CORRECTION
 
 		elif overlapse_right and p_right < self.MAX_PENETRATION:
-			self.rect.x -= (self.rect.right - orect.left) * self.PENETRATION_CORRECTION
+			self.pos.x -= (self.rect.right - orect.left) * self.PENETRATION_CORRECTION
 
 		elif overlapse_bottom and p_top < self.MAX_PENETRATION:
-			self.rect.y += (orect.bottom - self.rect.top) * self.PENETRATION_CORRECTION
+			self.pos.y += (orect.bottom - self.rect.top) * self.PENETRATION_CORRECTION
 
 		elif overlapse_left and p_left < self.MAX_PENETRATION:
-			self.rect.x += (orect.right - self.rect.left) * self.PENETRATION_CORRECTION
+			self.pos.x += (orect.right - self.rect.left) * self.PENETRATION_CORRECTION
+
+		self.rect.x = self.pos.y
+		self.rect.y = self.pos.x

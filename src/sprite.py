@@ -8,7 +8,7 @@ from color import *
 ##
 class Sprite(object):
 
-	def __init__(self, texture, dimensions, delay, scale=1):
+	def __init__(self, texture, dimensions, delay, scale=(1, 1)):
 		self.width, self.height = dimensions
 		self.delay = delay
 		self.timer = 0.0	
@@ -18,8 +18,8 @@ class Sprite(object):
 		nframes_x = self.rect.width / self.width
 		nframes_y = self.rect.height / self.height
 
-		self.width *= scale
-		self.height *= scale
+		self.width *= scale[0]
+		self.height *= scale[1]
 		self.image = pygame.transform.scale(self.image, (self.width * nframes_x, self.height * nframes_y))
 		self.rect = self.image.get_rect()
 		

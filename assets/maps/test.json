@@ -163,6 +163,58 @@
          "width":96,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "height":20,
+         "name":"tricky_blocks",
+         "objects":[
+                {
+                 "height":15,
+                 "name":"",
+                 "properties":
+                    {
+
+                    },
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":101,
+                 "x":1004,
+                 "y":457
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "width":96,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "height":20,
+         "name":"exit",
+         "objects":[
+                {
+                 "height":4,
+                 "name":"",
+                 "properties":
+                    {
+
+                    },
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":5,
+                 "x":3049,
+                 "y":235
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "width":96,
+         "x":0,
+         "y":0
         }],
  "orientation":"orthogonal",
  "properties":
