@@ -36,26 +36,31 @@ class PhysicsWorld(object):
 		if len(tiles) < 1:
 			return False
 
-		for x, y in tiles:
-			width = self.map.content['tilewidth']
-			height = self.map.content['tileheight']
-			rect = Rect((0, 0, 0, 0))
-			rect.left = x * width
-			rect.top = y * height
-			rect.width = width
-			rect.height = height
-			self.platforms.append(Platform(rect, layer))
+		x, y = tiles.pop(0)
+		width = self.map.content['tilewidth']
+		height = self.map.content['tileheight']
+		rect = Rect((0, 0, 0, 0))
+		rect.left = x * width
+		rect.top = y * height
+		rect.width = width
+		rect.height = height
+		self.platforms.append(Platform(rect, layer))
+		n_tiles_x, n_tiles_y = 0, 0
 
 		# exclude the tiles we're about to create a platform for
-		"""excluded_tiles = []
+		excluded_tiles = []
 		for (n_x, n_y) in tiles:
 			if abs(n_x - x) == n_tiles_x and n_y == y:
 				rect.width += width
 				n_tiles_x += 1
 				excluded_tiles.append((n_x, n_y))
+			if abs(n_y - y) == n_tiles_y and n_x == x:
+				rect.height += height
+				n_tiles_y += 1
+				excluded_tiles.append((n_x, n_y))
 
 		self.platforms.append(Platform(rect, layer))
-		self.create_platforms_rect([t for t in tiles if not t in excluded_tiles], layer)"""
+		self.create_platforms_rect([t for t in tiles if not t in excluded_tiles], layer)
 
 	def is_colliding(self, a, b):
 		return a.colliderect(b)
@@ -189,7 +194,7 @@ class PhysicsObject(object):
 
 	MAX_PENETRATION = 20.0
 	FOOT_SIZE = 0.5
-	PENETRATION_CORRECTION = 1
+	PENETRATION_CORRECTION = 1.1
 
 	def __init__(self, pos, vel, size=(0, 0), body_type=0):
 		self.pos = Vector2(pos)
@@ -240,6 +245,7 @@ class PhysicsObject(object):
 			draw_rect.top -= view_rect.top
 
 		image = pygame.Surface((draw_rect.width, draw_rect.height))
+		image.fill((207, 207, 0))
 		screen.blit(image, (draw_rect.left, draw_rect.top))
 
 		if not self.foot is None:
@@ -283,5 +289,5 @@ class PhysicsObject(object):
 		elif overlapse_left and p_left < self.MAX_PENETRATION:
 			self.pos.x += (orect.right - self.rect.left) * self.PENETRATION_CORRECTION
 
-		self.rect.x = self.pos.y
-		self.rect.y = self.pos.x
+		self.rect.left = self.pos.x - self.rect.width / 2
+		self.rect.top = self.pos.y - self.rect.height / 2
