@@ -121,7 +121,7 @@ class PhysicsWorld(object):
 				p_rect.top -= view_rect.top
 
 				if not obj.foot is None:
-					if self.is_colliding(obj.foot, p_rect):
+					if self.is_colliding(obj.foot, p_rect) and obj.foot.y < p_rect.y:
 						foot_collisions += 1
 
 						changed_active_color = False
@@ -156,6 +156,11 @@ class PhysicsWorld(object):
 
 					if should_handle_collision:
 						obj.correct_penetration(p_rect)
+
+						obj.rect.left -= view_rect.left
+
+						if not obj.foot is None:
+							obj.foot.left = obj.get_foot_left()
 
 						if obj.rect.bottom < p_rect.top:
 							obj.vel.y = 0
@@ -193,7 +198,7 @@ class PhysicsWorld(object):
 class PhysicsObject(object):
 
 	MAX_PENETRATION = 20.0
-	FOOT_SIZE = 0.5
+	FOOT_SIZE = 1
 	PENETRATION_CORRECTION = 1.1
 
 	def __init__(self, pos, vel, size=(0, 0), body_type=0):
@@ -219,7 +224,7 @@ class PhysicsObject(object):
 			self.foot = None
 
 	def get_foot_left(self):
-		return self.rect.left + (self.rect.width * self.FOOT_SIZE / 2)
+		return self.rect.left # + (self.rect.width * self.FOOT_SIZE / 2)
 
 	def update_foot(self):
 		if not self.foot is None:

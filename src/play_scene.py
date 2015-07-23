@@ -80,13 +80,13 @@ class LavaBlock(PhysicsObject):
 	def draw(self, screen, view_rect):
 		rect = Rect(self.rect.left, self.rect.top, self.rect.width, self.rect.height)
 		rect.left -= view_rect.left - rect.width / 2
-		rect.top -= view_rect.top - rect.height / 2
+		rect.top -= view_rect.top
 		self.sprite.draw(screen, rect)
 
 
-class TrickyBlock(PhysicsObject):
+class MovingBlock(PhysicsObject):
 
-	def __init__(self, pos, size, tile_width, properties):
+	def __init__(self, pos, end_pos, size, tile_width, tile):
 		left, top = pos
 		x = left
 		y = top + tile_width / 2
@@ -94,39 +94,33 @@ class TrickyBlock(PhysicsObject):
 		PhysicsObject.__init__(self, (x + size[0] / 2, y), (0, 0), size, BODY_STATIC)
 		self.img_rect = Surface(size)
 
+		print pos, end_pos
+
+		self.start_point = Vector2( (x + size[0] / 2, y) )
+		self.end_point = Vector2( (end_pos[0] + size[0] / 2, end_pos[1]) )
+		self.target_point = self.end_point
+
 		self.colors = ['red', 'green', 'blue', 'gray']
 		self.colors_values = [RED, GREEN, BLUE, GRAY]
+		self.color_index = self.colors.index(tile['properties']['color'])
 
-		self.shown_color_frame = self.colors.index(properties['initial_color'])
-
-		self.active_color = self.colors[self.shown_color_frame]
+		self.active_color = self.colors[ self.colors.index(tile['properties']['color']) ]
 		self.previous_active_color = 0
 
-		self.img_rect.fill(self.colors_values[self.shown_color_frame])
+		self.img_rect.fill(self.colors_values[self.color_index])
 
-		self.inverse = True if 'inverse' in properties else False
-
-	def gen_color(self, color_frame):
-		new_color = random.randint(0, 2)
-		if new_color == color_frame:
-			return self.gen_color(color_frame)
-		return new_color
+		self.target_vel.x = 20 * math.copysign(1.0, self.target_point.x - self.pos.x)
 
 	def on_collide_obj(self, obj):
-		if isinstance(obj, Player):
-			next_color = 0
-			if not self.inverse:
-				self.active_color = obj.active_color
-				next_color = self.colors.index(self.active_color)
-			else:
-				rand = self.gen_color(self.colors.index(self.active_color))
-				self.active_color = self.colors[rand]
-				next_color = rand
-
-			self.img_rect.fill(self.colors_values[next_color])
+		return True
 
 	def update(self, dt):
-		pass
+		PhysicsObject.update(self, dt)
+		if abs(self.pos.x - self.target_point.x) < 10:
+			self.target_point = self.start_point \
+								if self.target_point is self.end_point \
+								else self.end_point
+			self.target_vel.x = 20 * math.copysign(1.0, self.target_point.x - self.pos.x)
 
 	def draw(self, screen, view_rect):
 		left = self.rect.left - view_rect.left
@@ -195,7 +189,7 @@ class Monster(PhysicsObject):
 class Player(PhysicsObject):
 
 	def __init__(self, pos, input):
-		PhysicsObject.__init__(self, pos, (0, 0), (28, 62), BODY_DYNAMIC)
+		PhysicsObject.__init__(self, pos, (0, 0), (28, 48), BODY_DYNAMIC)
 		self.input = input
 		self.sprite = Sprite("../assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
 		self.set_foot(True)
@@ -217,7 +211,7 @@ class Player(PhysicsObject):
 
 		if self.input.is_down(K_UP) and self.on_ground:
 			print 'jump'
-			self.vel.y = -375
+			self.vel.y = -400
 			
 		if self.input.is_down(K_1):
 			self.active_color = 'red'
@@ -233,7 +227,7 @@ class Player(PhysicsObject):
 
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
-		if isinstance(obj, ColorChangingBlock) or isinstance(obj, TrickyBlock):
+		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock):
 			return obj.active_color != self.active_color
 		elif isinstance(obj, LavaBlock):
 			self.dead = True
@@ -255,7 +249,12 @@ class Player(PhysicsObject):
 			self.sprite.use_frames([0])
 
 	def draw(self, screen):
-		self.sprite.draw(screen, self.rect)
+		rect = copy.copy(self.rect)
+
+		# TODO: find the reason of this bug
+		rect.bottom -= 16
+
+		self.sprite.draw(screen, rect)
 
 
 class PlayScene(Scene):
@@ -285,7 +284,8 @@ class PlayScene(Scene):
 
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
 		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
-		tricky_blocks = self.map.get_obj_layer('tricky_blocks')['objects']
+		moving_blocks = self.map.get_obj_layer('moving_blocks')['objects']
+
 		exit_block = self.map.get_obj_layer('exit')['objects'][0]
 		texts = self.map.get_obj_layer('texts')['objects']
 
@@ -311,16 +311,20 @@ class PlayScene(Scene):
 			self.world.add_obj(lava_block)
 			self.drawable_objects.append(lava_block)
 
-		# create tricky blocks
-		for block in tricky_blocks:
+		for block in moving_blocks:
 			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
-			right, _ = self.obj_adjust_position(( block['x'] + block['width'], block['y']) )
+			print block['width']
+			right, _ = self.obj_adjust_position(( block['x'] + block['width'], block['y'] ))
 
 			right += self.map.content['tilewidth']
 
-			tricky_block = TrickyBlock(real_coord, (right - block['x'], self.map.content['tilewidth']), self.map.content['tilewidth'], block['properties'])
-			self.world.add_obj(tricky_block)
-			self.drawable_objects.append(tricky_block)
+			map_x, _ = self.map.get_map_coord( (block['x'], block['y']) )
+			end_pos_x = (map_x + int(block['properties']['end_pos_x'])) * self.map.content['tilewidth']
+			end_pos = (end_pos_x, block['y'])
+
+			moving_block = MovingBlock(real_coord, end_pos, (right - block['x'], self.map.content['tilewidth']), self.map.content['tilewidth'], block)
+			self.world.add_obj(moving_block)
+			self.drawable_objects.append(moving_block)
 
 		# create map texts
 		for text in texts:
@@ -346,11 +350,12 @@ class PlayScene(Scene):
 
 		lose = self.player.rect.top > game.screen.get_rect().height or self.player.dead
 		win = self.exit.exited
+		restart = game.input.is_down(K_r)
 
-		if lose:
+		if lose or restart:
 			game.next_scene = PlayScene(game, self.level)
 		elif win:
-			game.next_scene = PlayScene(game, self.level + 1)
+			game.next_scene = PlayScene(game, int(self.level) + 1)
 
 	def draw(self):
 		game = self.game

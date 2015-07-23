@@ -70,7 +70,7 @@ class Sprite(object):
 	def draw(self, screen, dst_rect):
 		image = self.frames[self.offset + self.current_frame]
 
-		# TODO: correct this bug
+		# TODO: fix this bug
 		left = dst_rect.left - dst_rect.width / 2
 		
 		top = dst_rect.top

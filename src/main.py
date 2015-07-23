@@ -38,6 +38,10 @@ class Game(object):
 				self.next_scene = None
 
 			for event in pygame.event.get():
+				if event.type == pygame.QUIT:
+					self.running = False
+					self.restarting = False
+
 				self.input.handle_event(event)
 
 			if game.input.is_down(pygame.K_ESCAPE):
@@ -72,6 +76,7 @@ class Game(object):
 
 	def quit(self):
 		pygame.quit()
+		quit()
 
 	def update(self, dt):
 		self.current_scene.update(dt)
@@ -81,7 +86,11 @@ class Game(object):
 
 
 def get_arg(args, key):
-	pos = args.index(key)
+	pos = 0
+	try:
+		pos = args.index(key)
+	except ValueError:
+		return None
 	try:
 		return args[pos + 1]
 	except IndexError:
