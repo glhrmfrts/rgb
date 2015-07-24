@@ -2,6 +2,7 @@ from pygame.locals import *
 from pygame import Surface
 from pygame import Rect
 from pygame.math import Vector2
+from pygame.mixer import Sound
 from color import *
 from physics import *
 from scene import Scene
@@ -13,6 +14,10 @@ from map import Map
 import random
 import os
 
+SOUND_ENABLED = True
+
+def PLAY_SOUND(sound):
+	if SOUND_ENABLED: sound.play()
 
 class ColorChangingBlock(PhysicsObject):
 
@@ -94,8 +99,6 @@ class MovingBlock(PhysicsObject):
 		PhysicsObject.__init__(self, (x + size[0] / 2, y), (0, 0), size, BODY_STATIC)
 		self.img_rect = Surface(size)
 
-		print pos, end_pos
-
 		self.start_point = Vector2( (x + size[0] / 2, y) )
 		self.end_point = Vector2( (end_pos[0] + size[0] / 2, end_pos[1]) )
 		self.target_point = self.end_point
@@ -113,6 +116,10 @@ class MovingBlock(PhysicsObject):
 
 	def on_collide_obj(self, obj):
 		return True
+
+	def change_obj_velocity(self, obj):
+		if not obj.wants_to_move:
+			obj.target_vel.x = self.target_vel.x
 
 	def update(self, dt):
 		PhysicsObject.update(self, dt)
@@ -196,15 +203,24 @@ class Player(PhysicsObject):
 		self.active_color = 'red'
 		self.acceleration = 400
 		self.dead = False
+		self.sound_jump = Sound('../assets/audio/jump.wav')
+		self.sound_land = Sound('../assets/audio/land.wav')
+		self.sound_push = Sound('../assets/audio/push.wav')
+		self.sound_timer = 0.0
+		self.sound_min_interval = 0.5
 
 	def handle_input(self, dt):
 		
 		self.target_vel.x = 0
 		if self.input.is_pressed(K_RIGHT):
+			if not self.wants_to_move:
+				self.wants_to_move = True
 			self.target_vel.x = 300
 			self.sprite.set_direction(1)
 			self.sprite.use_frames([1, 2])
 		elif self.input.is_pressed(K_LEFT):
+			if not self.wants_to_move:
+				self.wants_to_move = True
 			self.target_vel.x = -300
 			self.sprite.set_direction(-1)
 			self.sprite.use_frames([1, 2])
@@ -212,6 +228,7 @@ class Player(PhysicsObject):
 		if self.input.is_down(K_UP) and self.on_ground:
 			print 'jump'
 			self.vel.y = -400
+			PLAY_SOUND(self.sound_jump)
 			
 		if self.input.is_down(K_1):
 			self.active_color = 'red'
@@ -225,10 +242,19 @@ class Player(PhysicsObject):
 			self.active_color = 'blue'
 			self.sprite.set_offset(8)
 
+	def play_land_sound(self):
+		if self.sound_timer > self.sound_min_interval:
+			PLAY_SOUND(self.sound_land.play())
+			self.sound_timer = 0.0
+
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
 		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock):
-			return obj.active_color != self.active_color
+			if obj.active_color != self.active_color:
+				if self.vel.y > 1.0: 
+					pass# self.play_land_sound()
+				return True
+			return False
 		elif isinstance(obj, LavaBlock):
 			self.dead = True
 		elif isinstance(obj, ExitBlock):
@@ -236,12 +262,18 @@ class Player(PhysicsObject):
 		return True
 
 	def on_collide_platform(self, platform):
-		return platform.layer != self.active_color
+		if platform.layer != self.active_color:
+			if self.vel.y > 1.0: 
+				pass# self.play_land_sound()
+			return True
+		return False
 
 	def update(self, dt):
 		PhysicsObject.update(self, dt)
 		self.handle_input(dt)
 		self.sprite.update(dt)
+
+		self.sound_timer += dt
 
 		if self.vel.y > 1.0 and not self.on_ground:
 			self.sprite.use_frames([3])
@@ -338,12 +370,18 @@ class PlayScene(Scene):
 
 		self.world.add_obj(self.player)
 
+		self.sound_player_lose = Sound('../assets/audio/lose.wav')
+
 	def obj_adjust_position(self, pos):
 		map_x, map_y = self.map.get_map_coord((pos[0], pos[1]))
 		return (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
 	def update(self, dt):
+		global SOUND_ENABLED
 		game = self.game
+
+		if game.input.is_down(K_s):
+			SOUND_ENABLED = not SOUND_ENABLED
 
 		self.camera.update()
 		self.world.update(dt)
@@ -351,6 +389,9 @@ class PlayScene(Scene):
 		lose = self.player.rect.top > game.screen.get_rect().height or self.player.dead
 		win = self.exit.exited
 		restart = game.input.is_down(K_r)
+
+		if lose:
+			PLAY_SOUND(self.sound_player_lose)
 
 		if lose or restart:
 			game.next_scene = PlayScene(game, self.level)

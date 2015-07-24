@@ -99,6 +99,7 @@ def get_arg(args, key):
 if __name__ == '__main__':
 	width = 800
 	height = 600
+	pygame.mixer.pre_init(buffer=1024)
 	pygame.init()
 	screen = pygame.display.set_mode((width, height))
 	pygame.display.flip()

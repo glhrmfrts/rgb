@@ -68,6 +68,9 @@ class PhysicsWorld(object):
 	def set_view(self, view_rect):
 		self.map.set_view(view_rect)
 
+	def has_velocity_influence(self, obj):
+		return type(obj).__name__ in ['MovingBlock']
+
 	def update(self, dt):
 		bounds = self.bounds
 		view_rect = self.map.view_rect
@@ -142,6 +145,9 @@ class PhysicsWorld(object):
 								obj.on_ground = False
 						except AttributeError:
 							pass
+
+						if self.has_velocity_influence(p):
+							p.change_obj_velocity(obj)
 						
 
 				if self.is_colliding(obj.rect, p_rect):
@@ -212,6 +218,7 @@ class PhysicsObject(object):
 		self.acceleration = 1500
 		self.on_ground = False
 		self.foot = None
+		self.wants_to_move = False
 
 	def set_foot(self, use_foot=False):
 		if use_foot:
@@ -236,7 +243,10 @@ class PhysicsObject(object):
 		self.rect.left = self.pos.x - self.rect.width / 2
 		self.rect.top = self.pos.y - self.rect.height / 2
 		self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+		if self.vel.x == 0.0:
+			self.wants_to_move = False
 		self.update_foot()
+		print self.wants_to_move
 
 	def debug_draw(self, screen, view_rect):
 
