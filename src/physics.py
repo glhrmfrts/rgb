@@ -8,6 +8,9 @@ import copy
 BODY_DYNAMIC = 1
 BODY_STATIC = 2
 
+ID_PLAYER = 0
+ID_OBJ = 1
+
 class PhysicsWorld(object):
 
 	def __init__(self, tilemap, bounds, gravity=(0, 0)):
@@ -91,9 +94,11 @@ class PhysicsWorld(object):
 
 			# adjust viewport offsets
 			obj.rect.left -= view_rect.left
+			obj.rect.top -= view_rect.top
 
 			if not obj.foot is None:
 				obj.foot.left = obj.get_foot_left()
+				obj.foot.top -= view_rect.top
 			
 				# TODO: adjust y-axis viewport also
 
@@ -106,16 +111,6 @@ class PhysicsWorld(object):
 			elif obj.pos.x > bounds.width:
 				obj.vel.x = 0
 				obj.pos.x = bounds.width - (obj.rect.width / 2)
-
-			# check top and bottom bounds
-			"""if obj.pos.y < obj.rect.height / 2:
-				obj.vel.y = 0
-				obj.pos.y = obj.rect.height / 2
-			elif obj.pos.y > bounds.height - (obj.rect.height / 2):
-				obj.vel.y = 0
-				obj.pos.y = bounds.height - (obj.rect.height / 2)
-				obj.on_ground = True
-				foot_collisions = 1"""
 
 			for p in (self.platforms + self.static_objects):
 
@@ -132,7 +127,8 @@ class PhysicsWorld(object):
 							changed_active_color_static = False
 							if type(p).__name__ in ['ColorChangingBlock', 'TrickyBlock']:
 								changed_active_color_static = p.active_color != p.previous_active_color
-								if changed_active_color_static: p.previous_active_color = p.active_color
+								if changed_active_color_static: 
+									p.previous_active_color = p.active_color
 
 							changed_active_color = obj.active_color != previous_active_color or \
 													changed_active_color_static
@@ -164,6 +160,7 @@ class PhysicsWorld(object):
 						obj.correct_penetration(p_rect)
 
 						obj.rect.left -= view_rect.left
+						obj.rect.top -= view_rect.top
 
 						if not obj.foot is None:
 							obj.foot.left = obj.get_foot_left()
@@ -176,6 +173,38 @@ class PhysicsWorld(object):
 
 						if obj.rect.right < p_rect.left or obj.rect.left > p_rect.right:
 							obj.vel.x = 0
+
+			for o in self.dynamic_objects[(i + 1):]:
+
+				if not obj.foot is None:
+					if self.is_colliding(o.foot, obj.rect) and o.foot.y < obj.rect.y:
+						print "dynamic foot"
+						foot_collisions += 1
+
+				if self.is_colliding(obj.rect, o.rect):
+					print "dynamic"
+					obj_rect_copy = copy.copy(obj.rect)
+
+					obj.correct_penetration(o.rect)
+					o.correct_penetration(obj_rect_copy)
+
+					del obj_rect_copy
+
+					obj.rect.left -= view_rect.left
+					obj.rect.top -= view_rect.top
+
+					o.rect.left -= view_rect.left
+					o.rect.top -= view_rect.top
+
+					if o.rect.bottom < obj.rect.top:
+						o.vel.y = 0
+						o.on_ground = True
+					elif o.rect.top > obj.rect.bottom:
+						o.vel.y = 0
+
+					if o.rect.right < obj.rect.left or o.rect.left > obj.rect.right:
+						obj.vel.x = o.vel.x * 0.75
+						o.vel.x *= 0.25
 
 			if not obj.foot is None and foot_collisions < 1:
 				obj.on_ground = False
@@ -219,6 +248,7 @@ class PhysicsObject(object):
 		self.on_ground = False
 		self.foot = None
 		self.wants_to_move = False
+		self.id = None
 
 	def set_foot(self, use_foot=False):
 		if use_foot:
@@ -242,11 +272,17 @@ class PhysicsObject(object):
 		self.pos += self.vel * dt
 		self.rect.left = self.pos.x - self.rect.width / 2
 		self.rect.top = self.pos.y - self.rect.height / 2
-		self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+
+		if self.on_ground:
+			self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+
+		if not self.wants_to_move:
+			self.target_vel.x = 0
+
 		if self.vel.x == 0.0:
 			self.wants_to_move = False
+
 		self.update_foot()
-		print self.wants_to_move
 
 	def debug_draw(self, screen, view_rect):
 

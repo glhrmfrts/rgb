@@ -19,6 +19,7 @@ SOUND_ENABLED = True
 def PLAY_SOUND(sound):
 	if SOUND_ENABLED: sound.play()
 
+
 class ColorChangingBlock(PhysicsObject):
 
 	PATTERN_SIZE = 5
@@ -26,6 +27,8 @@ class ColorChangingBlock(PhysicsObject):
 	def __init__(self, pos, interval):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
 		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
+
+		self.id = ID_OBJ
 
 		self.timer = 0.0
 		self.interval = float(interval)
@@ -78,6 +81,7 @@ class LavaBlock(PhysicsObject):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
 		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
 		self.sprite.use_frames([0, 1, 2])
+		self.id = ID_OBJ
 
 	def update(self, dt):
 		self.sprite.update(dt)
@@ -98,6 +102,8 @@ class MovingBlock(PhysicsObject):
 		scale = size[0] / tile_width
 		PhysicsObject.__init__(self, (x + size[0] / 2, y), (0, 0), size, BODY_STATIC)
 		self.img_rect = Surface(size)
+
+		self.id = ID_OBJ
 
 		self.start_point = Vector2( (x + size[0] / 2, y) )
 		self.end_point = Vector2( (end_pos[0] + size[0] / 2, end_pos[1]) )
@@ -136,6 +142,42 @@ class MovingBlock(PhysicsObject):
 		screen.blit(self.img_rect, (left, top))
 
 
+class MovableBlock(PhysicsObject):
+
+	def __init__(self, pos, color):
+		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_DYNAMIC)
+		self.set_foot(True)
+		self.sprite = Sprite('../assets/img/ground.png', (32, 32), 0.1)
+
+		self.id = ID_OBJ
+		self.acceleration = 300
+
+		self.colors = ['red', 'green', 'blue', 'gray']
+		self.colors_values = [RED, GREEN, BLUE, GRAY]
+		self.color_index = self.colors.index(color)
+
+		self.active_color = self.colors[ self.colors.index(color) ]
+		self.previous_active_color = 0
+
+		self.sprite.use_frames([ 12 + self.color_index ])
+		self.sprite.update(5)
+
+	def on_collide_obj(self, obj):
+		return True
+
+	def on_collide_platform(self, p):
+		return p.layer != self.active_color
+
+	def update(self, dt):
+		PhysicsObject.update(self, dt)
+		self.sprite.update(dt)
+
+	def draw(self, screen, view_rect):
+		rect = copy.copy(self.rect)
+		rect.left += rect.width / 2
+		self.sprite.draw(screen, rect)
+
+
 class ExitBlock(PhysicsObject):
 
 	def __init__(self, pos):
@@ -157,42 +199,6 @@ class ExitBlock(PhysicsObject):
 		screen.blit(self.img, (left, top))
 
 
-# NOTE: not currently used
-class Monster(PhysicsObject):
-
-	def __init__(self, pos):
-		PhysicsObject.__init__(self, pos, (0, 0), (32, 64), BODY_DYNAMIC)
-		self.start_point = Vector2(450, 400)
-		self.end_point = Vector2(350, 400)
-		self.pos.x, self.pos.y = self.start_point.x, self.start_point.y
-		self.turn_direction(self.start_point)
-
-	def turn_direction(self, last_point):
-		self.target_vel.x = 20 * math.copysign(1.0, last_point.x - self.start_point.x)
-		self.last_point = last_point
-
-	def update(self, dt):
-		PhysicsObject.update(self, dt)
-		if abs(self.pos.x - self.end_point.x) < 10 and not self.last_point is self.end_point:
-			print "turn to start"
-			self.turn_direction(self.end_point)
-
-		elif abs(self.pos.x - self.start_point.x) < 10 and not self.last_point is self.start_point:
-			print "turn to end"
-			self.turn_direction(self.start_point)
-
-	def on_collide_platform(self, plat):
-		return True
-
-	def on_collide_obj(self, obj):
-		return True
-
-	def draw(self, screen):
-		debug_image = pygame.Surface((32, 64))
-		debug_image.fill( (0, 0, 255) )
-		screen.blit(debug_image, (self.rect.left, self.rect.top))
-
-
 class Player(PhysicsObject):
 
 	def __init__(self, pos, input):
@@ -208,6 +214,7 @@ class Player(PhysicsObject):
 		self.sound_push = Sound('../assets/audio/push.wav')
 		self.sound_timer = 0.0
 		self.sound_min_interval = 0.5
+		self.id = ID_PLAYER
 
 	def handle_input(self, dt):
 		
@@ -252,7 +259,7 @@ class Player(PhysicsObject):
 		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock):
 			if obj.active_color != self.active_color:
 				if self.vel.y > 1.0: 
-					pass# self.play_land_sound()
+					pass # self.play_land_sound()
 				return True
 			return False
 		elif isinstance(obj, LavaBlock):
@@ -302,7 +309,7 @@ class PlayScene(Scene):
 		self.map = Map(level_map_path, '../assets/img/ground.png')
 
 		screen_rect = game.screen.get_rect()
-		world_bounds = Rect(0, 0, self.map.get_rect().width, game.height)
+		world_bounds = Rect(0, 0, self.map.get_rect().width, self.map.get_rect().height)
 
 		self.bg = Surface((game.width, game.height))
 
@@ -317,6 +324,7 @@ class PlayScene(Scene):
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
 		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
 		moving_blocks = self.map.get_obj_layer('moving_blocks')['objects']
+		movable_blocks = self.map.get_obj_layer('movable_blocks')['objects']
 
 		exit_block = self.map.get_obj_layer('exit')['objects'][0]
 		texts = self.map.get_obj_layer('texts')['objects']
@@ -345,7 +353,6 @@ class PlayScene(Scene):
 
 		for block in moving_blocks:
 			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
-			print block['width']
 			right, _ = self.obj_adjust_position(( block['x'] + block['width'], block['y'] ))
 
 			right += self.map.content['tilewidth']
@@ -357,6 +364,13 @@ class PlayScene(Scene):
 			moving_block = MovingBlock(real_coord, end_pos, (right - block['x'], self.map.content['tilewidth']), self.map.content['tilewidth'], block)
 			self.world.add_obj(moving_block)
 			self.drawable_objects.append(moving_block)
+
+		for block in movable_blocks:
+			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
+
+			movable_block = MovableBlock(real_coord, block['properties']['color'])
+			self.world.add_obj(movable_block)
+			self.drawable_objects.append(movable_block)
 
 		# create map texts
 		for text in texts:
@@ -386,7 +400,7 @@ class PlayScene(Scene):
 		self.camera.update()
 		self.world.update(dt)
 
-		lose = self.player.rect.top > game.screen.get_rect().height or self.player.dead
+		lose = self.player.dead
 		win = self.exit.exited
 		restart = game.input.is_down(K_r)
 
@@ -409,4 +423,4 @@ class PlayScene(Scene):
 			obj.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
-		# self.world.debug_draw(game.screen)
+		self.world.debug_draw(game.screen)
