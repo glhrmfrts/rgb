@@ -22,9 +22,9 @@ def PLAY_SOUND(sound):
 
 class ColorChangingBlock(PhysicsObject):
 
-	PATTERN_SIZE = 5
+	PATTERN_SIZE = 3
 
-	def __init__(self, pos, interval):
+	def __init__(self, pos, interval, exclude_color):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
 		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
 
@@ -34,9 +34,17 @@ class ColorChangingBlock(PhysicsObject):
 		self.interval = float(interval)
 
 		self.colors = ['red', 'green', 'blue']
+		self.exclude_color = self.colors.index(exclude_color)
+
+		print self.exclude_color
 
 		# create a pattern for changing colors
-		self.pattern = [random.randint(0, 2) for i in range(self.PATTERN_SIZE)]
+		self.pattern = []
+
+		while len(self.pattern) < self.PATTERN_SIZE:
+			color = random.randint(0, 2)
+			if not color == self.exclude_color and self.pattern.count(color) < 2:
+				self.pattern.append(color)
 
 		self.pattern_color_pointer = random.randint(0, self.PATTERN_SIZE - 1)
 		self.previous_active_color = 0
@@ -256,7 +264,7 @@ class Player(PhysicsObject):
 
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
-		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock):
+		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock) or isinstance(obj, MovableBlock):
 			if obj.active_color != self.active_color:
 				if self.vel.y > 1.0: 
 					pass # self.play_land_sound()
@@ -320,6 +328,7 @@ class PlayScene(Scene):
 		player_y = player_spawn['y']
 
 		self.player = Player((player_x, player_y), game.input)
+		self.world.add_obj(self.player)
 
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
 		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
@@ -339,7 +348,14 @@ class PlayScene(Scene):
 		for block in color_changing_blocks:
 			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
 
-			block = ColorChangingBlock(real_coord, 2)
+			exclude_color = 'red'
+
+			try:
+				exclude_color = block['properties']['exclude_color']
+			except KeyError:
+				pass
+
+			block = ColorChangingBlock(real_coord, 1, exclude_color)
 			self.world.add_obj(block)
 			self.drawable_objects.append(block)
 
@@ -361,7 +377,9 @@ class PlayScene(Scene):
 			end_pos_x = (map_x + int(block['properties']['end_pos_x'])) * self.map.content['tilewidth']
 			end_pos = (end_pos_x, block['y'])
 
-			moving_block = MovingBlock(real_coord, end_pos, (right - block['x'], self.map.content['tilewidth']), self.map.content['tilewidth'], block)
+			print right - real_coord[0]
+
+			moving_block = MovingBlock(real_coord, end_pos, (right - real_coord[0], self.map.content['tilewidth']), self.map.content['tilewidth'], block)
 			self.world.add_obj(moving_block)
 			self.drawable_objects.append(moving_block)
 
@@ -375,14 +393,19 @@ class PlayScene(Scene):
 		# create map texts
 		for text in texts:
 			real_coord = self.obj_adjust_position( (text['x'], text['y']) )
-			game_text = Text(game.font, text['properties']['text'], real_coord)
+			size = 20
+			try:
+				size = int(text['properties']['size'])
+			except KeyError:
+				pass
+
+			font = pygame.font.Font('../assets/font/vcr.ttf', size)
+			game_text = Text(font, text['properties']['text'], real_coord)
 
 			self.drawable_objects.append(game_text)
 		
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
-
-		self.world.add_obj(self.player)
 
 		self.sound_player_lose = Sound('../assets/audio/lose.wav')
 
@@ -423,4 +446,4 @@ class PlayScene(Scene):
 			obj.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
-		self.world.debug_draw(game.screen)
+		# self.world.debug_draw(game.screen)

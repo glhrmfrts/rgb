@@ -1,6 +1,5 @@
 from pygame.math import Vector2
 from pygame import Rect
-from platform import Platform
 import pygame
 import math
 import copy
@@ -11,7 +10,129 @@ BODY_STATIC = 2
 ID_PLAYER = 0
 ID_OBJ = 1
 
+
+class Platform(object):
+	""" Simply holding some information about a platform in the game """
+
+	def __init__(self, rect, layer):
+		self.rect = rect
+		self.layer = layer
+
+
+class PhysicsObject(object):
+
+	MAX_PENETRATION = 20.0
+	FOOT_SIZE = 1
+	PENETRATION_CORRECTION = 1.1
+
+	def __init__(self, pos, vel, size=(0, 0), body_type=0):
+		self.pos = Vector2(pos)
+		self.vel = Vector2(vel)
+		self.target_vel = Vector2((0, 0))
+		self.type = body_type
+		self.rect = Rect(pos, size)
+		self.rect.left = self.pos.x - self.rect.width / 2
+		self.rect.top = self.pos.y - self.rect.height / 2
+		self.acceleration = 1500
+		self.on_ground = False
+		self.foot = None
+		self.wants_to_move = False
+		self.id = None
+
+	def set_foot(self, use_foot=False):
+		if use_foot:
+			foot_left = self.get_foot_left()
+			foot_top = self.rect.bottom - 2.5
+			foot_width = self.rect.width * self.FOOT_SIZE
+			foot_height = 5
+			self.foot = Rect(foot_left, foot_top, foot_width, foot_height)
+		else:
+			self.foot = None
+
+	def get_foot_left(self):
+		return self.rect.left # + (self.rect.width * self.FOOT_SIZE / 2)
+
+	def update_foot(self):
+		if not self.foot is None:
+			self.foot.left = self.get_foot_left()
+			self.foot.top = self.rect.bottom - 2.5
+
+	def update(self, dt):
+		self.pos += self.vel * dt
+		self.rect.left = self.pos.x - self.rect.width / 2
+		self.rect.top = self.pos.y - self.rect.height / 2
+		self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+
+		if not self.wants_to_move and self.type == BODY_DYNAMIC:
+			self.target_vel.x = 0
+
+		if self.vel.x == 0.0:
+			self.wants_to_move = False
+
+		self.update_foot()
+
+	def debug_draw(self, screen, view_rect):
+
+		draw_rect = None
+
+		if self.type == BODY_DYNAMIC:
+			draw_rect = self.rect
+		else:
+			draw_rect = copy.copy(self.rect)
+			draw_rect.left -= view_rect.left
+			draw_rect.top -= view_rect.top
+
+		image = pygame.Surface((draw_rect.width, draw_rect.height))
+		image.fill((207, 207, 0))
+		screen.blit(image, (draw_rect.left, draw_rect.top))
+
+		if not self.foot is None:
+			foot_image = pygame.Surface((self.foot.width, self.foot.height))
+			foot_image.fill( (255, 20, 0) )
+			screen.blit(foot_image, (self.foot.left, self.foot.top))
+
+	def move(self, current, target, acceleration, dt):
+		if (target == current):
+			return target
+		direction = math.copysign(1.0, target - current)
+		current += direction * acceleration * dt
+		return current if (direction == math.copysign(1.0, target - current)) else target
+
+	def on_collide_obj(self, obj=None):
+		pass
+
+	def on_collide_platform(self, tile=None):
+		pass
+
+	def correct_penetration(self, orect):
+		overlapse_right = self.vel.x > 0 and self.rect.right > orect.left and self.rect.left < orect.left
+		overlapse_left = self.vel.x < 0 and self.rect.left < orect.right and self.rect.right > orect.right
+		overlapse_top = self.vel.y > 0 and self.rect.bottom > orect.top and self.rect.top < orect.top
+		overlapse_bottom = self.vel.y < 0 and self.rect.top < orect.bottom and self.rect.bottom > orect.bottom
+
+		p_bottom = abs(self.rect.bottom - orect.top)
+		p_right = abs(self.rect.right - orect.left)
+		p_top = abs(self.rect.top - orect.bottom)
+		p_left = abs(self.rect.left - orect.right)
+
+		if overlapse_top and p_bottom < self.MAX_PENETRATION:
+			self.pos.y -= (self.rect.bottom - orect.top) * self.PENETRATION_CORRECTION
+
+		elif overlapse_right and p_right < self.MAX_PENETRATION:
+			self.pos.x -= (self.rect.right - orect.left) * self.PENETRATION_CORRECTION
+
+		elif overlapse_bottom and p_top < self.MAX_PENETRATION:
+			self.pos.y += (orect.bottom - self.rect.top) * self.PENETRATION_CORRECTION
+
+		elif overlapse_left and p_left < self.MAX_PENETRATION:
+			self.pos.x += (orect.right - self.rect.left) * self.PENETRATION_CORRECTION
+
+		self.rect.left = self.pos.x - self.rect.width / 2
+		self.rect.top = self.pos.y - self.rect.height / 2
+
+
 class PhysicsWorld(object):
+	""" Handles (hopefully) all collisions and interactions in the "world" """
 
 	def __init__(self, tilemap, bounds, gravity=(0, 0)):
 		self.map = tilemap
@@ -177,12 +298,14 @@ class PhysicsWorld(object):
 			for o in self.dynamic_objects[(i + 1):]:
 
 				if not obj.foot is None:
-					if self.is_colliding(o.foot, obj.rect) and o.foot.y < obj.rect.y:
-						print "dynamic foot"
+					if self.is_colliding(obj.foot, o.rect) and obj.foot.y < o.rect.y:
 						foot_collisions += 1
 
 				if self.is_colliding(obj.rect, o.rect):
-					print "dynamic"
+					should_handle_collision = obj.on_collide_obj(o)
+					if not should_handle_collision: 
+						continue
+
 					obj_rect_copy = copy.copy(obj.rect)
 
 					obj.correct_penetration(o.rect)
@@ -196,17 +319,25 @@ class PhysicsWorld(object):
 					o.rect.left -= view_rect.left
 					o.rect.top -= view_rect.top
 
-					if o.rect.bottom < obj.rect.top:
-						o.vel.y = 0
-						o.on_ground = True
-					elif o.rect.top > obj.rect.bottom:
-						o.vel.y = 0
+					if not obj.foot is None:
+						obj.foot.left = obj.get_foot_left()
+						obj.foot.top -= view_rect.top
 
-					if o.rect.right < obj.rect.left or o.rect.left > obj.rect.right:
-						obj.vel.x = o.vel.x * 0.75
-						o.vel.x *= 0.25
+					if not o.foot is None:
+						o.foot.left = o.get_foot_left()
+						o.foot.top -= view_rect.top
 
-			if not obj.foot is None and foot_collisions < 1:
+					if obj.rect.bottom < o.rect.top:
+						obj.vel.y = 0
+						obj.on_ground = True
+					elif obj.rect.top > o.rect.bottom:
+						obj.vel.y = 0
+
+					if obj.rect.right < o.rect.left or obj.rect.left > o.rect.right:
+						o.vel.x = obj.vel.x * 0.95
+						obj.vel.x *= 0.50
+
+			if not (obj.foot is None) and foot_collisions < 1:
 				obj.on_ground = False
 
 			if not obj.on_ground and obj.type == BODY_DYNAMIC:
@@ -228,117 +359,3 @@ class PhysicsWorld(object):
 
 		for obj in (self.dynamic_objects + self.static_objects):
 			obj.debug_draw(screen, view_rect)
-
-
-class PhysicsObject(object):
-
-	MAX_PENETRATION = 20.0
-	FOOT_SIZE = 1
-	PENETRATION_CORRECTION = 1.1
-
-	def __init__(self, pos, vel, size=(0, 0), body_type=0):
-		self.pos = Vector2(pos)
-		self.vel = Vector2(vel)
-		self.target_vel = Vector2((0, 0))
-		self.type = body_type
-		self.rect = Rect(pos, size)
-		self.rect.left = self.pos.x - self.rect.width / 2
-		self.rect.top = self.pos.y - self.rect.height / 2
-		self.acceleration = 1500
-		self.on_ground = False
-		self.foot = None
-		self.wants_to_move = False
-		self.id = None
-
-	def set_foot(self, use_foot=False):
-		if use_foot:
-			foot_left = self.get_foot_left()
-			foot_top = self.rect.bottom - 2.5
-			foot_width = self.rect.width * self.FOOT_SIZE
-			foot_height = 5
-			self.foot = Rect(foot_left, foot_top, foot_width, foot_height)
-		else:
-			self.foot = None
-
-	def get_foot_left(self):
-		return self.rect.left # + (self.rect.width * self.FOOT_SIZE / 2)
-
-	def update_foot(self):
-		if not self.foot is None:
-			self.foot.left = self.get_foot_left()
-			self.foot.top = self.rect.bottom - 2.5
-
-	def update(self, dt):
-		self.pos += self.vel * dt
-		self.rect.left = self.pos.x - self.rect.width / 2
-		self.rect.top = self.pos.y - self.rect.height / 2
-
-		if self.on_ground:
-			self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
-
-		if not self.wants_to_move:
-			self.target_vel.x = 0
-
-		if self.vel.x == 0.0:
-			self.wants_to_move = False
-
-		self.update_foot()
-
-	def debug_draw(self, screen, view_rect):
-
-		draw_rect = None
-
-		if self.type == BODY_DYNAMIC:
-			draw_rect = self.rect
-		else:
-			draw_rect = copy.copy(self.rect)
-			draw_rect.left -= view_rect.left
-			draw_rect.top -= view_rect.top
-
-		image = pygame.Surface((draw_rect.width, draw_rect.height))
-		image.fill((207, 207, 0))
-		screen.blit(image, (draw_rect.left, draw_rect.top))
-
-		if not self.foot is None:
-			foot_image = pygame.Surface((self.foot.width, self.foot.height))
-			foot_image.fill( (255, 20, 0) )
-			screen.blit(foot_image, (self.foot.left, self.foot.top))
-
-	def move(self, current, target, acceleration, dt):
-		if (target == current):
-			return target
-		direction = math.copysign(1.0, target - current)
-		current += direction * acceleration * dt
-		return current if (direction == math.copysign(1.0, target - current)) else target
-
-	def on_collide_obj(self, obj=None):
-		pass
-
-	def on_collide_platform(self, tile=None):
-		pass
-
-	def correct_penetration(self, orect):
-		overlapse_right = self.vel.x > 0 and self.rect.right > orect.left and self.rect.left < orect.left
-		overlapse_left = self.vel.x < 0 and self.rect.left < orect.right and self.rect.right > orect.right
-		overlapse_top = self.vel.y > 0 and self.rect.bottom > orect.top and self.rect.top < orect.top
-		overlapse_bottom = self.vel.y < 0 and self.rect.top < orect.bottom and self.rect.bottom > orect.bottom
-
-		p_bottom = abs(self.rect.bottom - orect.top)
-		p_right = abs(self.rect.right - orect.left)
-		p_top = abs(self.rect.top - orect.bottom)
-		p_left = abs(self.rect.left - orect.right)
-
-		if overlapse_top and p_bottom < self.MAX_PENETRATION:
-			self.pos.y -= (self.rect.bottom - orect.top) * self.PENETRATION_CORRECTION
-
-		elif overlapse_right and p_right < self.MAX_PENETRATION:
-			self.pos.x -= (self.rect.right - orect.left) * self.PENETRATION_CORRECTION
-
-		elif overlapse_bottom and p_top < self.MAX_PENETRATION:
-			self.pos.y += (orect.bottom - self.rect.top) * self.PENETRATION_CORRECTION
-
-		elif overlapse_left and p_left < self.MAX_PENETRATION:
-			self.pos.x += (orect.right - self.rect.left) * self.PENETRATION_CORRECTION
-
-		self.rect.left = self.pos.x - self.rect.width / 2
-		self.rect.top = self.pos.y - self.rect.height / 2
