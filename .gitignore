@@ -45,3 +45,5 @@ Temporary Items
 *.pyc
 prints
 dist
+build
+save.rgb

@@ -3,18 +3,21 @@ from pygame import Surface
 from pygame import Rect
 from pygame.math import Vector2
 from pygame.mixer import Sound
+from pygame.font import Font
 from color import *
 from physics import *
 from scene import Scene
 from camera import Camera
-from background import Background
 from sprite import Sprite
 from text import Text
 from map import Map
+import resource
 import random
 import os
+import math
 
 SOUND_ENABLED = True
+COLORS = ['red', 'green', 'blue']
 
 def PLAY_SOUND(sound):
 	if SOUND_ENABLED: sound.play()
@@ -35,8 +38,6 @@ class ColorChangingBlock(PhysicsObject):
 
 		self.colors = ['red', 'green', 'blue']
 		self.exclude_color = self.colors.index(exclude_color)
-
-		print self.exclude_color
 
 		# create a pattern for changing colors
 		self.pattern = []
@@ -209,8 +210,18 @@ class ExitBlock(PhysicsObject):
 
 class Player(PhysicsObject):
 
-	def __init__(self, pos, input):
+	def __init__(self, pos, color_interval, input):
 		PhysicsObject.__init__(self, pos, (0, 0), (28, 48), BODY_DYNAMIC)
+		self.change_color_mode = False
+		self.color_interval = 0
+		self.color_timer_text = None
+		if color_interval > 0:
+			self.change_color_mode = True
+			self.color_interval = color_interval
+			font = Font('../assets/font/vcr.ttf', 18)
+			self.color_timer_text = Text(font, str(color_interval), (740, 5))
+			self.color_timer_text.update = True
+		self.color_timer = 0.0
 		self.input = input
 		self.sprite = Sprite("../assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
 		self.set_foot(True)
@@ -223,6 +234,9 @@ class Player(PhysicsObject):
 		self.sound_timer = 0.0
 		self.sound_min_interval = 0.5
 		self.id = ID_PLAYER
+
+		# view rectangle for HUD stuff
+		self.view_rect = Rect(0, 0, 0, 0)
 
 	def handle_input(self, dt):
 		
@@ -244,7 +258,12 @@ class Player(PhysicsObject):
 			print 'jump'
 			self.vel.y = -400
 			PLAY_SOUND(self.sound_jump)
-			
+		
+		# if we are in the automatic color changing mode
+		# ignore the input from the user
+		if self.change_color_mode:
+			return
+
 		if self.input.is_down(K_1):
 			self.active_color = 'red'
 			self.sprite.set_offset(0)
@@ -283,12 +302,25 @@ class Player(PhysicsObject):
 			return True
 		return False
 
+	def change_color(self):
+		current_color_index = COLORS.index(self.active_color)
+		next_color_index = (current_color_index + 1) % len(COLORS)
+		print next_color_index
+		self.active_color = COLORS[next_color_index]
+		self.sprite.set_offset(4 * next_color_index)
+
 	def update(self, dt):
 		PhysicsObject.update(self, dt)
 		self.handle_input(dt)
 		self.sprite.update(dt)
-
 		self.sound_timer += dt
+
+		if self.change_color_mode:
+			self.color_timer_text.text = str(self.color_interval - self.color_timer)[:4]
+			self.color_timer += dt
+			if self.color_timer >= self.color_interval:
+				self.color_timer = 0.0
+				self.change_color()
 
 		if self.vel.y > 1.0 and not self.on_ground:
 			self.sprite.use_frames([3])
@@ -300,8 +332,9 @@ class Player(PhysicsObject):
 
 		# TODO: find the reason of this bug
 		rect.bottom -= 16
-
 		self.sprite.draw(screen, rect)
+		if not self.color_timer_text is None:
+			self.color_timer_text.draw(screen, self.view_rect)
 
 
 class PlayScene(Scene):
@@ -326,8 +359,13 @@ class PlayScene(Scene):
 		player_spawn = self.map.get_obj_layer('player_spawn')['objects'][0]
 		player_x = player_spawn['x']
 		player_y = player_spawn['y']
+		player_color_interval= 0
+		try:
+			player_color_interval = int(player_spawn['properties']['color_interval'])
+		except KeyError:
+			pass
 
-		self.player = Player((player_x, player_y), game.input)
+		self.player = Player((player_x, player_y), player_color_interval, game.input)
 		self.world.add_obj(self.player)
 
 		color_changing_blocks = self.map.get_obj_layer('color_changing_blocks')['objects']
@@ -377,8 +415,6 @@ class PlayScene(Scene):
 			end_pos_x = (map_x + int(block['properties']['end_pos_x'])) * self.map.content['tilewidth']
 			end_pos = (end_pos_x, block['y'])
 
-			print right - real_coord[0]
-
 			moving_block = MovingBlock(real_coord, end_pos, (right - real_coord[0], self.map.content['tilewidth']), self.map.content['tilewidth'], block)
 			self.world.add_obj(moving_block)
 			self.drawable_objects.append(moving_block)
@@ -413,6 +449,9 @@ class PlayScene(Scene):
 		map_x, map_y = self.map.get_map_coord((pos[0], pos[1]))
 		return (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
+	def save_game(self):
+		resource.write_save_file(str(self.level + 1))
+
 	def update(self, dt):
 		global SOUND_ENABLED
 		game = self.game
@@ -434,6 +473,7 @@ class PlayScene(Scene):
 			game.next_scene = PlayScene(game, self.level)
 		elif win:
 			game.next_scene = PlayScene(game, int(self.level) + 1)
+			self.save_game()
 
 	def draw(self):
 		game = self.game

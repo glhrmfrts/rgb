@@ -14,6 +14,7 @@ class Input(object):
 
 	def update(self):
 		# this clears all key states, and must be called before "handle_event"
+		self.click = False
 		for key in self.keys_down:
 			self.keys_down[key] = False
 
@@ -37,9 +38,11 @@ class Input(object):
 
 	def handle_mouse_down(self):
 		self.mouse_down = True
+		self.click = False
 
 	def handle_mouse_up(self):
 		self.mouse_down = False
+		self.click = True
 
 	def handle_mouse_move(self):
 		self.pos = self.mouse.get_pos()
