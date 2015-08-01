@@ -7,7 +7,6 @@ from color import *
 import pygame.font
 import pygame.image
 import pygame.transform
-import inspect
 import resource
 
 
@@ -27,17 +26,15 @@ class Menu(object):
 		self.arrow_y = 200
 		self.debug_mouse_img = Surface((20, 20))
 		self.debug_mouse_img.fill( RED )
+		self.main_callback = (lambda m: None)
 
 	def generate(self, menu_tree, parent=None):
 		font = None
 		for k in menu_tree:
 			val = menu_tree[k]
 			x, y, size = 0, 0, 25
-			callback = None
 			if isinstance(val, tuple):
 				x, y, size = val
-			elif inspect.isfunction(val):
-				callback = val
 			if y == 0:
 				y = (self.height / 2) + (self.padding * len(self.texts))
 			x += self.width / 2
@@ -47,7 +44,6 @@ class Menu(object):
 			info = {
 				'id': text_id,
 				'text': text,
-				'callback': callback,
 				'parent': parent,
 				'has_children': False,
 			}
@@ -67,12 +63,9 @@ class Menu(object):
 				if not self.current_menu == text['parent']:
 					continue
 				if mouse_rect.colliderect(text['text'].rect):
-					if not text['callback'] is None:
-						cb = text['callback']
-						cb()
-					else:
-						if text['has_children']:
-							self.current_menu = text['id']
+					self.main_callback(text['text'].text) # awesome variables and properties naming
+					if text['has_children']:
+						self.current_menu = text['id']
 					break
 
 	def draw(self, screen):
@@ -96,8 +89,8 @@ class MenuScene(Scene):
 		self.bg.fill((0,0,0))
 		menu_tree = {
 			'Play': {
-				'New Game': (lambda: self.new_game()),
-				'Continue Game': (lambda: self.continue_game())
+				'New Game': (0, 300, 18),
+				'Continue Game': (0, 325, 20)
 			},
 			'Controls': {
 				'1 - Turn Red': (0, 300, 18),
@@ -120,10 +113,14 @@ class MenuScene(Scene):
 		}
 		self.menu = Menu(game.input, (game.width, game.height))
 		self.menu.padding = 15
+		self.menu.main_callback = self.on_menu_click
 		self.menu.generate(menu_tree)
 
-	def new_game(self):
-		self.game.next_scene = PlayScene(self.game, self.start_level)
+	def on_menu_click(self, menu):
+		if menu == 'New Game':
+			self.game.next_scene = PlayScene(self.game, self.start_level)
+		elif menu == 'Continue Game':
+			self.continue_game()
 
 	def continue_game(self):
 		save_file = resource.find_save_file()

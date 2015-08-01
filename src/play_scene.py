@@ -18,6 +18,7 @@ import math
 
 SOUND_ENABLED = True
 COLORS = ['red', 'green', 'blue']
+PLAYER_JUMP_FORCE = -400
 
 def PLAY_SOUND(sound):
 	if SOUND_ENABLED: sound.play()
@@ -157,11 +158,12 @@ class MovableBlock(PhysicsObject):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_DYNAMIC)
 		self.set_foot(True)
 		self.sprite = Sprite('../assets/img/ground.png', (32, 32), 0.1)
+		self.bounce_timer = 0.0
 
-		self.id = ID_OBJ
+		self.id = ID_MOVABLE_BLOCK
 		self.acceleration = 300
 
-		self.colors = ['red', 'green', 'blue', 'gray']
+		self.colors = COLORS + ['gray']
 		self.colors_values = [RED, GREEN, BLUE, GRAY]
 		self.color_index = self.colors.index(color)
 
@@ -181,9 +183,52 @@ class MovableBlock(PhysicsObject):
 		PhysicsObject.update(self, dt)
 		self.sprite.update(dt)
 
+		if self.bounce_timer > 0.0:
+			self.bounce_timer -= dt
+
 	def draw(self, screen, view_rect):
 		rect = copy.copy(self.rect)
 		rect.left += rect.width / 2
+		self.sprite.draw(screen, rect)
+
+
+class ImpulseBlock(PhysicsObject):
+
+	BOUNCE_FACTOR = 1.35
+	BOUNCE_MIN_INTERVAL = 0.5
+
+	def __init__(self, pos, color, direction):
+		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
+		self.sprite = Sprite('../assets/img/arrow_blocks.png', (32, 32), 0.1)
+		self.id = ID_OBJ
+		self.colors = COLORS + ['gray']
+		color_index = self.colors.index(color)
+		self.active_color = self.colors[ color_index ]
+		self.sprite.use_frames([color_index])
+		self.sprite.update(5)
+		self.direction = direction # 1(down) or -1(up)
+		self.sprite.set_direction(False, direction)
+
+	def change_obj_velocity(self, obj):
+		if obj.active_color != self.active_color:
+			if obj.bounce_timer <= 0.0:
+				if obj.id == ID_PLAYER:
+					PLAY_SOUND(obj.sound_jump)
+				obj.bounce_timer = self.BOUNCE_MIN_INTERVAL
+				if obj.vel.y < 50:
+					obj.vel.y = PLAYER_JUMP_FORCE
+				else:
+					obj.vel.y = (obj.vel.y * self.BOUNCE_FACTOR) * self.direction
+			return True
+		return False
+
+	def update(self, dt):
+		pass
+
+	def draw(self, screen, view_rect):
+		rect = copy.copy(self.rect)
+		rect.left -= view_rect.left - rect.width / 2
+		rect.top -= view_rect.top
 		self.sprite.draw(screen, rect)
 
 
@@ -234,6 +279,7 @@ class Player(PhysicsObject):
 		self.sound_timer = 0.0
 		self.sound_min_interval = 0.5
 		self.id = ID_PLAYER
+		self.bounce_timer = 0.0
 
 		# view rectangle for HUD stuff
 		self.view_rect = Rect(0, 0, 0, 0)
@@ -256,7 +302,7 @@ class Player(PhysicsObject):
 
 		if self.input.is_down(K_UP) and self.on_ground:
 			print 'jump'
-			self.vel.y = -400
+			self.vel.y = PLAYER_JUMP_FORCE
 			PLAY_SOUND(self.sound_jump)
 		
 		# if we are in the automatic color changing mode
@@ -283,7 +329,10 @@ class Player(PhysicsObject):
 
 	def on_collide_obj(self, obj):
 		# print "player obj collisoin"
-		if isinstance(obj, ColorChangingBlock) or isinstance(obj, MovingBlock) or isinstance(obj, MovableBlock):
+		if isinstance(obj, ColorChangingBlock) or \
+			isinstance(obj, MovingBlock) or \
+			isinstance(obj, MovableBlock) or \
+			isinstance(obj, ImpulseBlock):
 			if obj.active_color != self.active_color:
 				if self.vel.y > 1.0: 
 					pass # self.play_land_sound()
@@ -314,6 +363,9 @@ class Player(PhysicsObject):
 		self.handle_input(dt)
 		self.sprite.update(dt)
 		self.sound_timer += dt
+
+		if self.bounce_timer > 0.0:
+			self.bounce_timer -= dt
 
 		if self.change_color_mode:
 			self.color_timer_text.text = str(self.color_interval - self.color_timer)[:4]
@@ -372,6 +424,7 @@ class PlayScene(Scene):
 		lava_blocks = self.map.get_obj_layer('lava_blocks')['objects']
 		moving_blocks = self.map.get_obj_layer('moving_blocks')['objects']
 		movable_blocks = self.map.get_obj_layer('movable_blocks')['objects']
+		impulse_blocks = self.map.get_obj_layer('impulse_blocks')['objects']
 
 		exit_block = self.map.get_obj_layer('exit')['objects'][0]
 		texts = self.map.get_obj_layer('texts')['objects']
@@ -425,6 +478,14 @@ class PlayScene(Scene):
 			movable_block = MovableBlock(real_coord, block['properties']['color'])
 			self.world.add_obj(movable_block)
 			self.drawable_objects.append(movable_block)
+
+		for block in impulse_blocks:
+			real_coord = self.obj_adjust_position( (block['x'], block['y']) )
+			color = block['properties']['color']
+			direction = int(block['properties']['direction'])
+			impulse_block = ImpulseBlock(real_coord, color, direction)
+			self.world.add_obj(impulse_block)
+			self.drawable_objects.append(impulse_block)
 
 		# create map texts
 		for text in texts:

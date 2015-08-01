@@ -102,6 +102,7 @@ if __name__ == '__main__':
 	pygame.mixer.pre_init(buffer=1024)
 	pygame.init()
 	screen = pygame.display.set_mode((width, height))
+	pygame.display.set_caption("RGB")
 	pygame.display.flip()
 	debug = True if '-d' in sys.argv else False
 	start_level = get_arg(sys.argv, '-l') or 1

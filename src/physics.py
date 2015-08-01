@@ -3,12 +3,14 @@ from pygame import Rect
 import pygame
 import math
 import copy
+import time
 
 BODY_DYNAMIC = 1
 BODY_STATIC = 2
 
 ID_PLAYER = 0
 ID_OBJ = 1
+ID_MOVABLE_BLOCK = 2
 
 
 class Platform(object):
@@ -61,7 +63,11 @@ class PhysicsObject(object):
 		self.pos += self.vel * dt
 		self.rect.left = self.pos.x - self.rect.width / 2
 		self.rect.top = self.pos.y - self.rect.height / 2
-		self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+
+		if self.id == ID_MOVABLE_BLOCK and self.on_ground:
+			self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
+		elif self.id != ID_MOVABLE_BLOCK:
+			self.vel.x = self.move(self.vel.x, self.target_vel.x, self.acceleration, dt)
 
 		if not self.wants_to_move and self.type == BODY_DYNAMIC:
 			self.target_vel.x = 0
@@ -193,7 +199,7 @@ class PhysicsWorld(object):
 		self.map.set_view(view_rect)
 
 	def has_velocity_influence(self, obj):
-		return type(obj).__name__ in ['MovingBlock']
+		return type(obj).__name__ in ['MovingBlock', 'ImpulseBlock']
 
 	def update(self, dt):
 		bounds = self.bounds
@@ -265,9 +271,14 @@ class PhysicsWorld(object):
 
 						if self.has_velocity_influence(p):
 							p.change_obj_velocity(obj)
-						
+				
+				is_colliding = False
+				if obj.vel.y > 0:
+					is_colliding = self.is_colliding(obj.rect, p_rect) and foot_collisions < 2
+				else:
+					is_colliding = self.is_colliding(obj.rect, p_rect)
 
-				if self.is_colliding(obj.rect, p_rect):
+				if is_colliding:
 
 					should_handle_collision = False
 
@@ -276,8 +287,9 @@ class PhysicsWorld(object):
 					else:
 						should_handle_collision = obj.on_collide_obj(p)
 						p.on_collide_obj(obj)
-
+						
 					if should_handle_collision:
+						print foot_collisions
 						obj.correct_penetration(p_rect)
 
 						obj.rect.left -= view_rect.left
@@ -334,8 +346,11 @@ class PhysicsWorld(object):
 						obj.vel.y = 0
 
 					if obj.rect.right < o.rect.left or obj.rect.left > o.rect.right:
-						o.vel.x = obj.vel.x * 0.95
-						obj.vel.x *= 0.50
+						o.vel.x = obj.vel.x * 0.75
+						obj.vel.x *= 0.25
+
+			# print foot_collisions
+			# time.sleep(1)
 
 			if not (obj.foot is None) and foot_collisions < 1:
 				obj.on_ground = False

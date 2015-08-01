@@ -28,7 +28,8 @@ class Sprite(object):
 		self.current_frame = 0
 
 		# 1 (right) or -1 (left)
-		self.direction = 1
+		self.direction_x = 1
+		self.direction_y = -1
 		self.offset = 0
 
 	def get_rect(self):
@@ -47,11 +48,17 @@ class Sprite(object):
 	def set_offset(self, offset):
 		self.offset = offset
 
-	def set_direction(self, direction):
-		if self.direction != direction:
-			for i in range(len(self.frames)):
-				self.frames[i] = pygame.transform.flip(self.frames[i], True, False)
-			self.direction = direction
+	def set_direction(self, direction_x, direction_y=0):
+		direction_x = direction_x or self.direction_x
+		direction_y = direction_y or self.direction_y
+		for i in range(len(self.frames)):
+			self.frames[i] = pygame.transform.flip(
+				self.frames[i], 
+				direction_x != self.direction_x, 
+				direction_y != self.direction_y
+			)
+		self.direction_x = direction_x
+		self.direction_y = direction_y
 
 	def get_next_frame(self):
 		self.current_frame += 1
