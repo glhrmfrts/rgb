@@ -328,14 +328,13 @@ class Player(PhysicsObject):
 			self.sound_timer = 0.0
 
 	def on_collide_obj(self, obj):
-		# print "player obj collisoin"
 		if isinstance(obj, ColorChangingBlock) or \
 			isinstance(obj, MovingBlock) or \
 			isinstance(obj, MovableBlock) or \
 			isinstance(obj, ImpulseBlock):
 			if obj.active_color != self.active_color:
 				if self.vel.y > 1.0: 
-					pass # self.play_land_sound()
+					pass 
 				return True
 			return False
 		elif isinstance(obj, LavaBlock):
@@ -347,14 +346,14 @@ class Player(PhysicsObject):
 	def on_collide_platform(self, platform):
 		if platform.layer != self.active_color:
 			if self.vel.y > 1.0: 
-				pass# self.play_land_sound()
+				pass
 			return True
 		return False
 
 	def change_color(self):
 		current_color_index = COLORS.index(self.active_color)
 		next_color_index = (current_color_index + 1) % len(COLORS)
-		print(next_color_index)
+	
 		self.active_color = COLORS[next_color_index]
 		self.sprite.set_offset(4 * next_color_index)
 
