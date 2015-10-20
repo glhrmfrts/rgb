@@ -174,7 +174,7 @@ class PhysicsWorld(object):
 		rect.top = y * height
 		rect.width = width
 		rect.height = height
-		self.platforms.append(Platform(rect, layer))
+		# self.platforms.append(Platform(rect, layer))
 		n_tiles_x, n_tiles_y = 0, 0
 
 		# exclude the tiles we're about to create a platform for
@@ -348,9 +348,6 @@ class PhysicsWorld(object):
 					if obj.rect.right < o.rect.left or obj.rect.left > o.rect.right:
 						o.vel.x = obj.vel.x * 0.75
 						obj.vel.x *= 0.25
-
-			# print foot_collisions
-			# time.sleep(1)
 
 			if not (obj.foot is None) and foot_collisions < 1:
 				obj.on_ground = False

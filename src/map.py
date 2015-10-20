@@ -20,7 +20,7 @@ class Map(object):
 		self.obj_layers = self.get_layers_of_type('objectgroup')
 		del self.content['layers']
 
-		self.visible_tile_layers = map(lambda l: l['name'], self.tile_layers)
+		self.visible_tile_layers = list(map(lambda l: l['name'], self.tile_layers))
 		self.collidable_tile_layers = copy.copy(self.visible_tile_layers)
 		self.view_rect = None
 
@@ -41,7 +41,7 @@ class Map(object):
 		return copy.copy(self.rect)
 
 	def get_tile_layer(self, name):
-		return filter(lambda l: (l['name'] == name), self.tile_layers)[0]
+		return list(filter(lambda l: (l['name'] == name), self.tile_layers))[0]
 
 	def get_obj_layer(self, name):
 		try:
