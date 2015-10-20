@@ -15,8 +15,8 @@ class Sprite(object):
 		self.image = resource.load_image(texture)
 		self.rect = self.image.get_rect()
 
-		nframes_x = self.rect.width / self.width
-		nframes_y = self.rect.height / self.height
+		nframes_x = int(self.rect.width / self.width)
+		nframes_y = int(self.rect.height / self.height)
 
 		self.width *= scale[0]
 		self.height *= scale[1]
@@ -36,8 +36,8 @@ class Sprite(object):
 		return self.rect
 
 	def get_frames_rect(self):
-		for y in range(self.rect.height / self.height):
-			for x in range(self.rect.width / self.width):
+		for y in range(int(self.rect.height / self.height)):
+			for x in range(int(self.rect.width / self.width)):
 				frame_left = x * self.width
 				frame_top = y * self.height
 				yield (frame_left, frame_top, self.width, self.height)

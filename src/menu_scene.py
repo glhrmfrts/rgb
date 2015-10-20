@@ -18,7 +18,7 @@ class Menu(object):
 		self.padding = 0
 		self.current_menu = None
 		self.width, self.height = size
-		self.arrow = pygame.image.load('../assets/img/arrow.png')
+		self.arrow = pygame.image.load('./assets/img/arrow.png')
 		self.arrow = pygame.transform.scale(self.arrow, (64, 32))
 		self.arrow.set_colorkey((0,0,0))
 		self.arrow.convert()
@@ -38,7 +38,7 @@ class Menu(object):
 			if y == 0:
 				y = (self.height / 2) + (self.padding * len(self.texts))
 			x += self.width / 2
-			font = pygame.font.Font('../assets/font/vcr.ttf', size)
+			font = pygame.font.Font('./assets/font/vcr.ttf', size)
 			text_id = len(self.texts)
 			text = Text(font, k, (x, y))
 			info = {

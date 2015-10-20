@@ -29,8 +29,8 @@ class Map(object):
 
 	def get_tileset_frames(self, image_rect):
 		""" get each individual frame of the tileset """
-		nframes_x = image_rect.width / self.content['tilewidth']
-		nframes_y = image_rect.height / self.content['tileheight']
+		nframes_x = int(image_rect.width / self.content['tilewidth'])
+		nframes_y = int(image_rect.height / self.content['tileheight'])
 		for y in range(nframes_y):
 			for x in range(nframes_x):
 				frame_left = x * self.content['tilewidth']
@@ -45,12 +45,12 @@ class Map(object):
 
 	def get_obj_layer(self, name):
 		try:
-			return filter(lambda l: (l['name'] == name), self.obj_layers)[0]
+			return list(filter(lambda l: (l['name'] == name), self.obj_layers))[0]
 		except IndexError:
 			return {'objects': []}
 
 	def get_layers_of_type(self, type_name):
-		return filter(lambda l: (l['type'] == type_name), self.content['layers'])
+		return list(filter(lambda l: (l['type'] == type_name), self.content['layers']))
 
 	def coord_to_index(self, x, y, width=0):
 		width = width if width > 0 else self.content['width'] 

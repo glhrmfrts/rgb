@@ -289,7 +289,7 @@ class PhysicsWorld(object):
 						p.on_collide_obj(obj)
 						
 					if should_handle_collision:
-						print foot_collisions
+						print(foot_collisions)
 						obj.correct_penetration(p_rect)
 
 						obj.rect.left -= view_rect.left

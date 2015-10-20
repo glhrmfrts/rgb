@@ -13,7 +13,7 @@ class Game(object):
 		self.clock = pygame.time.Clock()
 		self.running = False
 		self.test_text = "Hello world"
-		self.font = pygame.font.Font('../assets/font/vcr.ttf', 28)
+		self.font = pygame.font.Font('./assets/font/vcr.ttf', 28)
 		self.screen = screen
 		self.width = width
 		self.height = height

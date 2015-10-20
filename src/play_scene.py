@@ -30,7 +30,7 @@ class ColorChangingBlock(PhysicsObject):
 
 	def __init__(self, pos, interval, exclude_color):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
-		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
+		self.sprite = Sprite('./assets/img/blocks.png', (32, 32), 0.1)
 
 		self.id = ID_OBJ
 
@@ -89,7 +89,7 @@ class LavaBlock(PhysicsObject):
 
 	def __init__(self, pos):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
-		self.sprite = Sprite('../assets/img/blocks.png', (32, 32), 0.1)
+		self.sprite = Sprite('./assets/img/blocks.png', (32, 32), 0.1)
 		self.sprite.use_frames([0, 1, 2])
 		self.id = ID_OBJ
 
@@ -157,7 +157,7 @@ class MovableBlock(PhysicsObject):
 	def __init__(self, pos, color):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_DYNAMIC)
 		self.set_foot(True)
-		self.sprite = Sprite('../assets/img/ground.png', (32, 32), 0.1)
+		self.sprite = Sprite('./assets/img/ground.png', (32, 32), 0.1)
 		self.bounce_timer = 0.0
 
 		self.id = ID_MOVABLE_BLOCK
@@ -199,7 +199,7 @@ class ImpulseBlock(PhysicsObject):
 
 	def __init__(self, pos, color, direction):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
-		self.sprite = Sprite('../assets/img/arrow_blocks.png', (32, 32), 0.1)
+		self.sprite = Sprite('./assets/img/arrow_blocks.png', (32, 32), 0.1)
 		self.id = ID_OBJ
 		self.colors = COLORS + ['gray']
 		color_index = self.colors.index(color)
@@ -236,7 +236,7 @@ class ExitBlock(PhysicsObject):
 
 	def __init__(self, pos):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_STATIC)
-		self.img = pygame.image.load('../assets/img/exit.png')
+		self.img = pygame.image.load('./assets/img/exit.png')
 		self.exited = False
 
 	def on_collide_obj(self, obj):
@@ -263,19 +263,19 @@ class Player(PhysicsObject):
 		if color_interval > 0:
 			self.change_color_mode = True
 			self.color_interval = color_interval
-			font = Font('../assets/font/vcr.ttf', 18)
+			font = Font('./assets/font/vcr.ttf', 18)
 			self.color_timer_text = Text(font, str(color_interval), (740, 5))
 			self.color_timer_text.update = True
 		self.color_timer = 0.0
 		self.input = input
-		self.sprite = Sprite("../assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
+		self.sprite = Sprite("./assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
 		self.set_foot(True)
 		self.active_color = 'red'
 		self.acceleration = 400
 		self.dead = False
-		self.sound_jump = Sound('../assets/audio/jump.wav')
-		self.sound_land = Sound('../assets/audio/land.wav')
-		self.sound_push = Sound('../assets/audio/push.wav')
+		self.sound_jump = Sound('./assets/audio/jump.wav')
+		self.sound_land = Sound('./assets/audio/land.wav')
+		self.sound_push = Sound('./assets/audio/push.wav')
 		self.sound_timer = 0.0
 		self.sound_min_interval = 0.5
 		self.id = ID_PLAYER
@@ -301,7 +301,7 @@ class Player(PhysicsObject):
 			self.sprite.use_frames([1, 2])
 
 		if self.input.is_down(K_UP) and self.on_ground:
-			print 'jump'
+			print('jump')
 			self.vel.y = PLAYER_JUMP_FORCE
 			PLAY_SOUND(self.sound_jump)
 		
@@ -354,7 +354,7 @@ class Player(PhysicsObject):
 	def change_color(self):
 		current_color_index = COLORS.index(self.active_color)
 		next_color_index = (current_color_index + 1) % len(COLORS)
-		print next_color_index
+		print(next_color_index)
 		self.active_color = COLORS[next_color_index]
 		self.sprite.set_offset(4 * next_color_index)
 
@@ -398,8 +398,8 @@ class PlayScene(Scene):
 		self.x = 50.0
 		self.drawable_objects = []
 		self.level = level
-		level_map_path = os.path.join('../assets/maps', 'map'+ str(level) +'.json')
-		self.map = Map(level_map_path, '../assets/img/ground.png')
+		level_map_path = './assets/maps/map'+ str(level) +'.json'
+		self.map = Map(level_map_path, './assets/img/ground.png')
 
 		screen_rect = game.screen.get_rect()
 		world_bounds = Rect(0, 0, self.map.get_rect().width, self.map.get_rect().height)
@@ -411,7 +411,7 @@ class PlayScene(Scene):
 		player_spawn = self.map.get_obj_layer('player_spawn')['objects'][0]
 		player_x = player_spawn['x']
 		player_y = player_spawn['y']
-		player_color_interval= 0
+		player_color_interval = 0
 		try:
 			player_color_interval = int(player_spawn['properties']['color_interval'])
 		except KeyError:
@@ -496,7 +496,7 @@ class PlayScene(Scene):
 			except KeyError:
 				pass
 
-			font = pygame.font.Font('../assets/font/vcr.ttf', size)
+			font = pygame.font.Font('./assets/font/vcr.ttf', size)
 			game_text = Text(font, text['properties']['text'], real_coord)
 
 			self.drawable_objects.append(game_text)
@@ -504,7 +504,7 @@ class PlayScene(Scene):
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
 
-		self.sound_player_lose = Sound('../assets/audio/lose.wav')
+		self.sound_player_lose = Sound('./assets/audio/lose.wav')
 
 	def obj_adjust_position(self, pos):
 		map_x, map_y = self.map.get_map_coord((pos[0], pos[1]))
