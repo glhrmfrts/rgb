@@ -3,6 +3,10 @@ A pygame platformer game where your color matters!
 
 The rule is: You don't collide with anything that has the same color with you. So you must find your way through the obstacles by changing your color.
 
+Take a look: (Please note I'm not a game designer c:)
+
+![Screenshot](https://raw.githubusercontent.com/glhrmfrts/rgb/master/assets/rgb.png)
+
 Visit **Controls** menu in the game for more information.
 
 ## Playing
