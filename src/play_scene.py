@@ -301,7 +301,6 @@ class Player(PhysicsObject):
 			self.sprite.use_frames([1, 2])
 
 		if self.input.is_down(K_UP) and self.on_ground:
-			print('jump')
 			self.vel.y = PLAYER_JUMP_FORCE
 			PLAY_SOUND(self.sound_jump)
 		
