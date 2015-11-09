@@ -509,7 +509,7 @@ class PlayScene(Scene):
 		return (map_x * self.map.content['tilewidth'], map_y * self.map.content['tileheight'])
 
 	def save_game(self):
-		resource.write_save_file(str(self.level + 1))
+		resource.write_save_file(str(int(self.level) + 1))
 
 	def update(self, dt):
 		global SOUND_ENABLED
