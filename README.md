@@ -44,4 +44,4 @@ Every object in a level is loaded dynamically from the json file. If you haven't
 
 
 ## Bugs
-The game is not complete, so there are bugs. The most notable one is the physics in level 9 where you are supposed to repeatedly gain impulse from the **ImpulseBlock** but it is not working right now :p. I plan to switch to a physics engine in the near future, but if you have any ideas and/or want to contribute, just send a pull request.
+The game is not complete, so there are bugs. The most notable one is the physics in level 9 where you are supposed to repeatedly gain impulse from the **ImpulseBlock** but it is not working right now :p. ~~I plan to switch to a physics engine in the near future, but if you have any ideas and/or want to contribute, just send a pull request.~~ I plan to re-build this game from scratch using other programming language and OpenGL.
