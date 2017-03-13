@@ -1,7 +1,6 @@
 from pygame.locals import *
 from pygame import Surface
 from pygame import Rect
-from pygame.math import Vector2
 from pygame.mixer import Sound
 from pygame.font import Font
 from color import *
@@ -10,6 +9,7 @@ from scene import Scene
 from camera import Camera
 from sprite import Sprite
 from text import Text
+from physics import Vector2
 from map import Map
 import resource
 import random
@@ -64,7 +64,7 @@ class ColorChangingBlock(PhysicsObject):
 		self.timer += dt
 
 		self.previous_active_color = self.active_color
-		
+
 		if self.timer >= self.interval:
 			self.timer = 0
 			self.previous_pointer = self.pattern_color_pointer
@@ -156,7 +156,6 @@ class MovableBlock(PhysicsObject):
 
 	def __init__(self, pos, color):
 		PhysicsObject.__init__(self, (pos[0] + 16, pos[1] + 16), (0, 0), (32, 32), BODY_DYNAMIC)
-		self.set_foot(True)
 		self.sprite = Sprite('./assets/img/ground.png', (32, 32), 0.1)
 		self.bounce_timer = 0.0
 
@@ -180,7 +179,6 @@ class MovableBlock(PhysicsObject):
 		return p.layer != self.active_color
 
 	def update(self, dt):
-		PhysicsObject.update(self, dt)
 		self.sprite.update(dt)
 
 		if self.bounce_timer > 0.0:
@@ -239,7 +237,7 @@ class ExitBlock(PhysicsObject):
 		self.img = pygame.image.load('./assets/img/exit.png')
 		self.exited = False
 
-	def on_collide_obj(self, obj):
+	def on_collision(self, col, obj):
 		if isinstance(obj, Player):
 			if obj.active_color != 'green':
 				self.exited = True
@@ -256,7 +254,7 @@ class ExitBlock(PhysicsObject):
 class Player(PhysicsObject):
 
 	def __init__(self, pos, color_interval, input):
-		PhysicsObject.__init__(self, pos, (0, 0), (28, 48), BODY_DYNAMIC)
+		PhysicsObject.__init__(self, (pos[0] + 14, pos[1] + 24), (0, 0), (28, 48), BODY_DYNAMIC)
 		self.change_color_mode = False
 		self.color_interval = 0
 		self.color_timer_text = None
@@ -269,7 +267,6 @@ class Player(PhysicsObject):
 		self.color_timer = 0.0
 		self.input = input
 		self.sprite = Sprite("./assets/img/new_guy.png", (64, 64), (1.0 / 12.0))
-		self.set_foot(True)
 		self.active_color = 'red'
 		self.acceleration = 400
 		self.dead = False
@@ -285,7 +282,7 @@ class Player(PhysicsObject):
 		self.view_rect = Rect(0, 0, 0, 0)
 
 	def handle_input(self, dt):
-		
+
 		self.target_vel.x = 0
 		if self.input.is_pressed(K_RIGHT):
 			if not self.wants_to_move:
@@ -303,7 +300,7 @@ class Player(PhysicsObject):
 		if self.input.is_down(K_UP) and self.on_ground:
 			self.vel.y = PLAYER_JUMP_FORCE
 			PLAY_SOUND(self.sound_jump)
-		
+
 		# if we are in the automatic color changing mode
 		# ignore the input from the user
 		if self.change_color_mode:
@@ -326,33 +323,28 @@ class Player(PhysicsObject):
 			PLAY_SOUND(self.sound_land.play())
 			self.sound_timer = 0.0
 
-	def on_collide_obj(self, obj):
+	def on_collision(self, col, obj):
 		if isinstance(obj, ColorChangingBlock) or \
 			isinstance(obj, MovingBlock) or \
 			isinstance(obj, MovableBlock) or \
 			isinstance(obj, ImpulseBlock):
 			if obj.active_color != self.active_color:
-				if self.vel.y > 1.0: 
-					pass 
 				return True
 			return False
 		elif isinstance(obj, LavaBlock):
 			self.dead = True
 		elif isinstance(obj, ExitBlock):
 			return True if self.active_color != 'green' else False
+                elif isinstance(obj, Platform):
+                        if obj.layer != self.active_color:
+			        return True
+		        return False
 		return True
-
-	def on_collide_platform(self, platform):
-		if platform.layer != self.active_color:
-			if self.vel.y > 1.0: 
-				pass
-			return True
-		return False
 
 	def change_color(self):
 		current_color_index = COLORS.index(self.active_color)
 		next_color_index = (current_color_index + 1) % len(COLORS)
-	
+
 		self.active_color = COLORS[next_color_index]
 		self.sprite.set_offset(4 * next_color_index)
 
@@ -404,7 +396,7 @@ class PlayScene(Scene):
 
 		self.bg = Surface((game.width, game.height))
 
-		self.world = PhysicsWorld(self.map, world_bounds, (0, 900))
+		self.world = World(self.map, world_bounds, (0, 9))
 
 		player_spawn = self.map.get_obj_layer('player_spawn')['objects'][0]
 		player_x = player_spawn['x']
@@ -498,7 +490,7 @@ class PlayScene(Scene):
 			game_text = Text(font, text['properties']['text'], real_coord)
 
 			self.drawable_objects.append(game_text)
-		
+
 		self.camera = Camera(self.world, screen_rect, world_bounds)
 		self.camera.set_target(self.player)
 
@@ -545,4 +537,4 @@ class PlayScene(Scene):
 			obj.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
-		# self.world.debug_draw(game.screen)
+		self.world.debug_draw(game.screen)
