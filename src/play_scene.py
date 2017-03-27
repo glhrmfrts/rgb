@@ -53,10 +53,7 @@ class ColorChangingBlock(PhysicsObject):
 		self.active_color = self.colors[ self.pattern[self.pattern_color_pointer] ]
 		self.sprite.use_frames([ self.pattern[self.pattern_color_pointer] ])
 
-	def on_collide_obj(self, obj):
-		return True
-
-	def on_collide_platform(self, plat):
+	def on_collision(self, col, obj):
 		return True
 
 	def update(self, dt):
@@ -96,6 +93,9 @@ class LavaBlock(PhysicsObject):
 	def update(self, dt):
 		self.sprite.update(dt)
 
+        def on_collision(self, col, obj):
+		return True
+
 	def draw(self, screen, view_rect):
 		rect = Rect(self.rect.left, self.rect.top, self.rect.width, self.rect.height)
 		rect.left -= view_rect.left - rect.width / 2
@@ -130,7 +130,7 @@ class MovingBlock(PhysicsObject):
 
 		self.target_vel.x = 20 * math.copysign(1.0, self.target_point.x - self.pos.x)
 
-	def on_collide_obj(self, obj):
+	def on_collision(self, col, obj):
 		return True
 
 	def change_obj_velocity(self, obj):
@@ -172,11 +172,8 @@ class MovableBlock(PhysicsObject):
 		self.sprite.use_frames([ 12 + self.color_index ])
 		self.sprite.update(5)
 
-	def on_collide_obj(self, obj):
+	def on_collision(self, col, obj):
 		return True
-
-	def on_collide_platform(self, p):
-		return p.layer != self.active_color
 
 	def update(self, dt):
 		self.sprite.update(dt)
@@ -228,6 +225,9 @@ class ImpulseBlock(PhysicsObject):
 		rect.left -= view_rect.left - rect.width / 2
 		rect.top -= view_rect.top
 		self.sprite.draw(screen, rect)
+
+        def on_collision(self, col, obj):
+		return True
 
 
 class ExitBlock(PhysicsObject):
@@ -324,6 +324,9 @@ class Player(PhysicsObject):
 			self.sound_timer = 0.0
 
 	def on_collision(self, col, obj):
+                if col.normal.y == 1:
+                        self.on_ground = True
+
 		if isinstance(obj, ColorChangingBlock) or \
 			isinstance(obj, MovingBlock) or \
 			isinstance(obj, MovableBlock) or \
@@ -369,11 +372,13 @@ class Player(PhysicsObject):
 		else:
 			self.sprite.use_frames([0])
 
+                self.on_ground = False
+
 	def draw(self, screen):
 		rect = copy.copy(self.rect)
 
 		# TODO: find the reason of this bug
-		rect.bottom -= 16
+		rect.bottom -= 24
 		self.sprite.draw(screen, rect)
 		if not self.color_timer_text is None:
 			self.color_timer_text.draw(screen, self.view_rect)
@@ -537,4 +542,4 @@ class PlayScene(Scene):
 			obj.draw(game.screen, self.camera.rect)
 
 		self.player.draw(game.screen)
-		self.world.debug_draw(game.screen)
+		#self.world.debug_draw(game.screen)

@@ -88,7 +88,7 @@ class PhysicsObject(object):
 	def __init__(self, pos, vel, size=(0, 0), body_type=0):
 		self.pos = Vector2(pos)
 		self.vel = Vector2(vel)
-                self.half = Vector2((size[0] / 0.5, size[1] * 0.5))
+                self.half = Vector2((size[0] * 0.5, size[1] * 0.5))
 		self.target_vel = Vector2((0, 0))
 		self.type = body_type
 		self.rect = Rect(pos, size)
@@ -133,6 +133,9 @@ class Platform(PhysicsObject):
                         return Vector2((self.x * arg, self.y * arg))
                 elif type(arg) == 'Vector2':
                         return Vector2((self.x * arg.x, self.y * arg.y))
+
+        def on_collision(self, col, obj):
+                return True
 
 class World(object):
         def __init__(self, tilemap, bounds, gravity):
@@ -235,10 +238,13 @@ class World(object):
 
                 for col in self.collisions:
                         print((col.normal.x, col.normal.y), col.depth)
-                        if col.first.on_collision(col, col.second):
+                        if col.first.on_collision(col, col.second) and col.second.on_collision(col, col.first):
                                 col.resolve()
 
                 for obj in self.dynamic_objects:
+                        obj.update(dt)
+                        obj.vel.x = move(obj.vel.x, obj.target_vel.x, obj.acceleration, dt)
+
                         obj.pos += obj.vel * dt
 		        obj.rect.left = obj.pos.x - obj.rect.width / 2
 		        obj.rect.top = obj.pos.y - obj.rect.height / 2
@@ -250,6 +256,8 @@ class World(object):
                                 pass#obj.wants_to_move = False
 
                 for obj in self.static_objects:
+                        obj.update(dt)
+
                         if obj.id == ID_MOVABLE_BLOCK:
 			        obj.vel.x = move(obj.vel.x, obj.target_vel.x, obj.acceleration, dt)
 		        elif obj.id != ID_MOVABLE_BLOCK:
